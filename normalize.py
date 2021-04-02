@@ -12,11 +12,13 @@ def process_doc(content):
     :return: dictionary with term frequency in this document, and the lengths of vector of the document
     """
     doc_dict = {}
+    doc_positions = {}
     stemmer = PorterStemmer()
     words = nltk.word_tokenize(content)
     size = len(words)
     regex = re.compile('[^a-zA-Z0-9]')
     skip_counter = 0
+    positional_index = 0
     for index, w in enumerate(words):
         if skip_counter > 0:
             skip_counter -= 1
@@ -28,7 +30,10 @@ def process_doc(content):
         if w != '':
             if w not in doc_dict:
                 doc_dict[w] = 0
+                doc_positions[w] = []
             doc_dict[w] += 1
+            doc_positions[w].append(positional_index)
+            positional_index += 1
     acc = 0
     for word in doc_dict:
         tf = 1 + math.log(doc_dict[word], 10)
