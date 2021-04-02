@@ -28,6 +28,26 @@ def build_index(in_dir, out_dict, out_postings):
     reader = csv.DictReader(in_file)
 
     # Read each file, the files are already in ascending order of document ID
+    read_data(dictionary, doc_freq, doc_len, reader)
+
+    # Write output files
+    write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings)
+
+    # Close file
+    in_file.close()
+    print(dictionary)
+
+
+def read_data(dictionary, doc_freq, doc_len, reader):
+    """
+    Reads in data from the file reader of dataset input
+    :param dictionary: the dictionary containing the document ID, term frequency, and positional indices list of each
+    word of each document that contains this term
+    :param doc_freq: the document frequency dictionary
+    :param doc_len: the document vector lengths dictionary
+    :param reader: the file reader of dataset input
+    :return: none
+    """
     for row in reader:
         document_id = int(row['document_id'])
         content = row['content']
@@ -38,12 +58,29 @@ def build_index(in_dir, out_dict, out_postings):
             if word not in dictionary:
                 dictionary[word] = []
                 doc_freq[word] = 0
-            dictionary[word].append((document_id, doc_dict[word], doc_positions[word]))
+            dictionary[word].append({
+                'id': document_id,
+                'tf': doc_dict[word],
+                'positions': doc_positions[word]
+            })
             doc_freq[word] += 1
         doc_len[document_id] = process_res[2]
 
-    # Close file
-    in_file.close()
+
+def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
+    """
+    Writes the information from dataset file to dictionary and postings
+    :param doc_freq: the document frequency dictionary
+    :param dictionary: the dictionary containing the document ID, term frequency, and positional indices list of each
+    word of each document that contains this term
+    :param doc_len: the dictionary of the vector length of each document
+    :param out_dict: the output file for dictionary
+    :param out_postings: the output file for postings
+    :return: none
+    """
+    dict_writer = open(out_dict, 'w')
+    post_writer = open(out_postings, 'w')
+    doc_freq = sorted(doc_freq)
 
 
 input_directory = output_file_dictionary = output_file_postings = None

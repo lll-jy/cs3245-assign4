@@ -58,6 +58,3 @@ def is_enum(token):
         if regex.match(token):
             return True
         return False
-
-
-print(process_doc('13 Jan hello! ... world?123 (3)la (i) (vii) (a) (ab) (xiv) (vvvvvv) a/b/c'))

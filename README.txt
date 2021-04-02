@@ -28,6 +28,18 @@ to all terms.
 Notably, there are a number of appearance of enumerating indices in the content of many files,
 such as (1), (iii), (c) etc. These terms are also not counted as valid terms.
 
+1.3 Information gathered at indexing stage
+
+All terms, their corresponding document frequency, their term frequency in each document,
+and list of positional indices of their appearance in each document are captured at indexing
+stage.
+
+The length of the vector of each document is also calculated at this stage.
+
+1.4 Output format
+
+
+
 == Files included with this submission ==
 
 index.py: required source code of indexing
