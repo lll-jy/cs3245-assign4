@@ -4,6 +4,7 @@ import getopt
 import sys
 
 from normalize import process_doc
+from widths import pos_width, post_width, tf_width, pos_pointer_width
 
 
 def usage():
@@ -35,7 +36,7 @@ def build_index(in_dir, out_dict, out_postings):
 
     # Close file
     in_file.close()
-    print(dictionary)
+    print('end')
 
 
 def read_data(dictionary, doc_freq, doc_len, reader):
@@ -65,6 +66,7 @@ def read_data(dictionary, doc_freq, doc_len, reader):
             })
             doc_freq[word] += 1
         doc_len[document_id] = process_res[2]
+        break
 
 
 def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
@@ -78,9 +80,73 @@ def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
     :param out_postings: the output file for postings
     :return: none
     """
+    """
+    dictionary.txt:
+    postings_start_pointer lengths_start_pointer
+    term1 df pointer
+    term2 df pointer
+    ... 
+    ------
+    postings.txt:
+    (of term1 doc1) pos1 pos2 ...
+    (of term1 doc2) pos1 pos2 ...
+    ...
+    (of term2 doc1) pos1 pos2 ...
+    ...
+    
+    (of term 1) doc_id1 term_freq1 positions_pointer1 doc_id2 term_freq2 positions_pointer2 ...
+    (of term 2) doc_id1 term_freq1 positions_pointer1 ...
+    ...
+    
+    doc_id1 len1
+    doc_id2 len2
+    ...
+    """
+    # Initialization
     dict_writer = open(out_dict, 'w')
     post_writer = open(out_postings, 'w')
-    doc_freq = sorted(doc_freq)
+    words = sorted(doc_freq)
+    pos_pointers = {}
+    post_pointers = {}
+    pointer = 0
+
+    # Get the positions pointer and print positions to the postings file
+    for word in words:
+        pos_pointers[word] = {}
+        for posting in dictionary[word]:
+            pos_pointers[word][posting['id']] = pointer
+            for pos in posting['positions']:
+                post_writer.write(f'{str(pos).zfill(pos_width)} ')
+                pointer += pos_width + 1
+            post_writer.write('\n')
+            pointer += 1
+
+    # Print the postings
+    postings_pointer = pointer
+    pointer = 0
+    for word in words:
+        post_pointers[word] = {}
+        for posting in dictionary[word]:
+            post_pointers[word] = pointer
+            post_writer.write(f"{str(posting['id']).zfill(post_width)} {str(posting['tf']).zfill(tf_width)} "
+                              f"{str(pos_pointers[word][posting['id']]).zfill(pos_pointer_width)} ")
+            pointer += post_width + tf_width + pos_pointer_width + 3
+        post_writer.write('\n')
+        pointer += 1
+
+    # Print lengths
+    lengths_pointer = pointer + postings_pointer
+    for doc in doc_len:
+        post_writer.write(f"{doc} {doc_len[doc]}\n")
+
+    # Print dictionary
+    dict_writer.write(f"{postings_pointer} {lengths_pointer}\n")
+    for word in words:
+        dict_writer.write(f"{word} {str(doc_freq[word])} {post_pointers[word]}\n")
+
+    # Close files
+    dict_writer.close()
+    post_writer.close()
 
 
 input_directory = output_file_dictionary = output_file_postings = None
