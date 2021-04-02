@@ -75,3 +75,9 @@ https://www.programiz.com/python-programming/reading-csv-files
 
 CSV field size exception handling:
 https://stackoverflow.com/questions/15063936/csv-error-field-larger-than-field-limit-131072
+
+Python array index in for loop help:
+https://stackoverflow.com/questions/1011938/python-loop-that-also-accesses-previous-and-next-values
+
+Roman numeral regex:
+https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch06s09.html

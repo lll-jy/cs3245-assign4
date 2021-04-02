@@ -23,7 +23,6 @@ def build_index(in_dir, out_dict, out_postings):
     reader = csv.DictReader(in_file)
 
     # Read each file, the files are already in ascending order of document ID
-    prev = 0
     for row in reader:
         """
         print(dict(row))
@@ -32,8 +31,7 @@ def build_index(in_dir, out_dict, out_postings):
             break
         """
         document_id = int(row['document_id'])
-
-        #print(int(row['document_id']))
+        content = row['content']
         if int(row['document_id']) < prev:
             print('wrong')
         prev = int(row['document_id'])
