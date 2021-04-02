@@ -7,6 +7,19 @@ this assignment.
 
 == General Notes about this assignment ==
 
+1. Indexing
+
+1.1 Reading input data
+
+The input data is in .csv file, the Python library csv is used to handle processing content
+of this file.
+
+The "document_id" field in .csv is used as the actual document ID of the line. The "content"
+field is used as the actual content of the corresponding document. Content in "title",
+"date_posted", and "court" fields are omitted.
+
+
+1.2 Normalization of terms
 
 
 
@@ -56,3 +69,9 @@ https://www.nltk.org/api/nltk.html
 
 Python API:
 https://docs.python.org/3/library/
+
+Python csv help:
+https://www.programiz.com/python-programming/reading-csv-files
+
+CSV field size exception handling:
+https://stackoverflow.com/questions/15063936/csv-error-field-larger-than-field-limit-131072

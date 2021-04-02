@@ -1,9 +1,11 @@
 #!/usr/bin/python3
+import csv
 import getopt
 import sys
 
+
 def usage():
-    print("usage: " + sys.argv[0] + " -i directory-of-documents -d dictionary-file -p postings-file")
+    print("usage: " + sys.argv[0] + " -i dataset-file -d dictionary-file -p postings-file")
 
 
 def build_index(in_dir, out_dict, out_postings):
@@ -12,6 +14,32 @@ def build_index(in_dir, out_dict, out_postings):
     then output the dictionary file and postings file
     """
     print("indexing...")
+
+    # Initializations
+    csv.field_size_limit(sys.maxsize)
+
+    # Open file
+    in_file = open(in_dir, 'r')
+    reader = csv.DictReader(in_file)
+
+    # Read each file, the files are already in ascending order of document ID
+    prev = 0
+    for row in reader:
+        """
+        print(dict(row))
+        index = index + 1
+        if index > 2:
+            break
+        """
+        document_id = int(row['document_id'])
+
+        #print(int(row['document_id']))
+        if int(row['document_id']) < prev:
+            print('wrong')
+        prev = int(row['document_id'])
+
+    # Close file
+    in_file.close()
 
 
 input_directory = output_file_dictionary = output_file_postings = None
