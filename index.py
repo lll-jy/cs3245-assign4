@@ -3,6 +3,8 @@ import csv
 import getopt
 import sys
 
+from normalize import process_doc
+
 
 def usage():
     print("usage: " + sys.argv[0] + " -i dataset-file -d dictionary-file -p postings-file")
@@ -17,6 +19,9 @@ def build_index(in_dir, out_dict, out_postings):
 
     # Initializations
     csv.field_size_limit(sys.maxsize)
+    dictionary = {}
+    doc_freq = {}
+    doc_len = {}
 
     # Open file
     in_file = open(in_dir, 'r')
@@ -32,9 +37,14 @@ def build_index(in_dir, out_dict, out_postings):
         """
         document_id = int(row['document_id'])
         content = row['content']
-        if int(row['document_id']) < prev:
-            print('wrong')
-        prev = int(row['document_id'])
+        process_res = process_doc(content)
+        doc_dict = process_res[0]
+        for word in doc_dict:
+            if word not in dictionary:
+                dictionary[word] = []
+                doc_freq[word] = 0
+            dictionary[word].append((document_id, doc_dict[word]))
+            doc_freq[word] += 1
 
     # Close file
     in_file.close()
