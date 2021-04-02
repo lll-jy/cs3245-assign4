@@ -66,7 +66,6 @@ def read_data(dictionary, doc_freq, doc_len, reader):
             })
             doc_freq[word] += 1
         doc_len[document_id] = process_res[2]
-        break
 
 
 def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
@@ -110,6 +109,10 @@ def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
     post_pointers = {}
     pointer = 0
 
+    max_positional_index = 0
+    max_doc_id = 0
+    max_term_freq = 0
+    max_positions_pointer = 0
     # Get the positions pointer and print positions to the postings file
     for word in words:
         pos_pointers[word] = {}
@@ -117,6 +120,7 @@ def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
             pos_pointers[word][posting['id']] = pointer
             for pos in posting['positions']:
                 post_writer.write(f'{str(pos).zfill(pos_width)} ')
+                max_positional_index = max(pos, max_positional_index)
                 pointer += pos_width + 1
             post_writer.write('\n')
             pointer += 1
@@ -128,6 +132,7 @@ def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
         post_pointers[word] = {}
         for posting in dictionary[word]:
             post_pointers[word] = pointer
+            max_term_freq = max(posting['tf'], max_term_freq)
             post_writer.write(f"{str(posting['id']).zfill(post_width)} {str(posting['tf']).zfill(tf_width)} "
                               f"{str(pos_pointers[word][posting['id']]).zfill(pos_pointer_width)} ")
             pointer += post_width + tf_width + pos_pointer_width + 3
@@ -137,6 +142,7 @@ def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
     # Print lengths
     lengths_pointer = pointer + postings_pointer
     for doc in doc_len:
+        max_doc_id = max(doc, max_doc_id)
         post_writer.write(f"{doc} {doc_len[doc]}\n")
 
     # Print dictionary
@@ -147,6 +153,13 @@ def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
     # Close files
     dict_writer.close()
     post_writer.close()
+
+    # Dummy
+    max_positions_pointer = postings_pointer
+    print(max_positional_index)
+    print(max_doc_id)
+    print(max_term_freq)
+    print(max_positions_pointer)
 
 
 input_directory = output_file_dictionary = output_file_postings = None

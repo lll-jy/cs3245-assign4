@@ -17,23 +17,34 @@ def process_doc(content):
     stemmer = PorterStemmer()
     words = nltk.word_tokenize(content)
     size = len(words)
-    regex = re.compile('[^a-zA-Z0-9]')
+    alnum_regex = re.compile('[^a-zA-Z0-9]')
     skip_counter = 0
     positional_index = 0
-    for index, w in enumerate(words):
+    for index, word in enumerate(words):
         if skip_counter > 0:
             skip_counter -= 1
             continue
-        if index < size - 2 and w == '(' and words[index + 2] == ')' and is_enum(words[index + 1]):
+        if index < size - 2 and word == '(' and words[index + 2] == ')' and is_enum(words[index + 1]):
             skip_counter = 2
             continue
-        w = regex.sub('', stemmer.stem(w.lower()))
-        if w != '':
-            if w not in doc_dict:
-                doc_dict[w] = 0
-                doc_positions[w] = []
-            doc_dict[w] += 1
-            doc_positions[w].append(positional_index)
+        word = alnum_regex.sub('', stemmer.stem(word.lower()))
+        ws = re.match(r"([0-9]+)([a-z]+)", word, re.I)
+        if ws:
+            ws = ws.groups()
+            for w in ws:
+                if w != '':
+                    if w not in doc_dict:
+                        doc_dict[w] = 0
+                        doc_positions[w] = []
+                    doc_dict[w] += 1
+                    doc_positions[w].append(positional_index)
+                    positional_index += 1
+        elif word != '':
+            if word not in doc_dict:
+                doc_dict[word] = 0
+                doc_positions[word] = []
+            doc_dict[word] += 1
+            doc_positions[word].append(positional_index)
             positional_index += 1
     acc = 0
     for word in doc_dict:
