@@ -9,7 +9,8 @@ def process_doc(content):
     """
     Processes the content of a document
     :param content: content string of a document (or query)
-    :return: dictionary with term frequency in this document, and the lengths of vector of the document
+    :return: dictionary with term frequency in this document, the positions of terms in the document,
+     and the lengths of vector of the document
     """
     doc_dict = {}
     doc_positions = {}
@@ -38,7 +39,7 @@ def process_doc(content):
     for word in doc_dict:
         tf = 1 + math.log(doc_dict[word], 10)
         acc += tf * tf
-    return doc_dict, math.sqrt(acc)
+    return doc_dict, doc_positions, math.sqrt(acc)
 
 
 def is_enum(token):

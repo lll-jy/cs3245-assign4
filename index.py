@@ -29,22 +29,18 @@ def build_index(in_dir, out_dict, out_postings):
 
     # Read each file, the files are already in ascending order of document ID
     for row in reader:
-        """
-        print(dict(row))
-        index = index + 1
-        if index > 2:
-            break
-        """
         document_id = int(row['document_id'])
         content = row['content']
         process_res = process_doc(content)
         doc_dict = process_res[0]
+        doc_positions = process_res[1]
         for word in doc_dict:
             if word not in dictionary:
                 dictionary[word] = []
                 doc_freq[word] = 0
-            dictionary[word].append((document_id, doc_dict[word]))
+            dictionary[word].append((document_id, doc_dict[word], doc_positions[word]))
             doc_freq[word] += 1
+        doc_len[document_id] = process_res[2]
 
     # Close file
     in_file.close()
