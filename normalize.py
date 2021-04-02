@@ -15,6 +15,7 @@ def process_doc(content):
     stemmer = PorterStemmer()
     words = nltk.word_tokenize(content)
     size = len(words)
+    regex = re.compile('[^a-zA-Z0-9]')
     skip_counter = 0
     for index, w in enumerate(words):
         if skip_counter > 0:
@@ -23,9 +24,9 @@ def process_doc(content):
         if index < size - 2 and w == '(' and words[index + 2] == ')' and is_enum(words[index + 1]):
             skip_counter = 2
             continue
-        if w.isalnum():
-            w = stemmer.stem(w.lower())
-            if w != "" and w not in doc_dict:
+        w = regex.sub('', stemmer.stem(w.lower()))
+        if w != '':
+            if w not in doc_dict:
                 doc_dict[w] = 0
             doc_dict[w] += 1
     acc = 0
@@ -53,4 +54,4 @@ def is_enum(token):
         return False
 
 
-process_doc('13 Jan hello! ... world?123 (3)la (i) (vii) (a) (ab) (xiv) (vvvvvv)')
+print(process_doc('13 Jan hello! ... world?123 (3)la (i) (vii) (a) (ab) (xiv) (vvvvvv) a/b/c'))

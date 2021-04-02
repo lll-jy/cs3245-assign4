@@ -21,7 +21,12 @@ field is used as the actual content of the corresponding document. Content in "t
 
 1.2 Normalization of terms
 
+Words are stemmed using NLTK Porter stemmer, and only alphanumerical terms are preserved.
+Numbers are not removed, and stop words are not removed. Case-folding to lower case is applied
+to all terms.
 
+Notably, there are a number of appearance of enumerating indices in the content of many files,
+such as (1), (iii), (c) etc. These terms are also not counted as valid terms.
 
 == Files included with this submission ==
 
