@@ -3,6 +3,9 @@ import getopt
 import sys
 
 # Global variables
+from read import load_dict
+from widths import doc_width
+
 pf = None
 dictionary = {}
 doc_len = {}
@@ -29,18 +32,10 @@ def run_search(dict_file, postings_file, queries_file, results_file):
 
     # Load dictionary
     df = open(dict_file, 'r')
-    pointers = df.readline()
+    pointers = df.readline()[:-1].split(' ')
     postings_base_pointer = int(pointers[0])
     lengths_base_pointer = int(pointers[1])
-    terms = df.readlines()
-    for word_str in terms:
-        word_str = word_str[:-1]
-        entries = word_str.split(' ')
-        dictionary[entries[0]] = {
-            'df': entries[1],
-            'ptr': entries[2]
-        }
-    df.close()
+    load_dict(df, dictionary)
 
     # Load vector lengths
     pf.seek(lengths_base_pointer)
@@ -51,6 +46,17 @@ def run_search(dict_file, postings_file, queries_file, results_file):
         entries = line[:-1].strip().split(' ')
         doc_len[int(entries[0])] = float(entries[1])
 
+
+def read_posting(word, index):
+    """
+    Read the document ID, term frequency, and pointer to positions list of the index-th document of given word
+    :param word: the term to search
+    :param index: the index of the document w.r.t. this term
+    :return: tuple (ID, tf, ptr)
+    """
+    pf.seek(postings_base_pointer + dictionary[word]['ptr'] + doc_width * index)
+    info = pf.read(doc_width).strip().split(' ')
+    return int(info[0]), int(info[1]), int(info[2])
 
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None

@@ -38,7 +38,24 @@ The length of the vector of each document is also calculated at this stage.
 
 1.4 Output format
 
+dictionary.txt:
+The first line is 2 numbers corresponding to the start position of postings section in postings
+file and lengths section in postings file respectively. Each line of the remaining part
+represents a term in sorted ascending alphabetical order, and each line consists of the term
+itself, document frequency, and pointer to postings file (w.r.t. the postings section)
 
+postings.txt:
+There are 3 sections corresponding to positions, documents, and lengths. The positions section
+are a set of lines such that each line contains the positional indices of a term in a specific
+document ordered in ascending order by term and document ID as tie breaker. The documents section
+is the postings information, each line corresponds to the term in the line in dictionary.txt,
+and each line contains a list of triples of document ID, term frequency, and positional pointer
+to this postings.txt. The lengths section is the vector lengths of each document, each line
+represents one document, containing the document ID and length of vector.
+
+1.5 In-memory and disk techniques
+
+Since the input data is too big, BSBI is applied.
 
 == Files included with this submission ==
 
