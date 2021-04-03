@@ -18,7 +18,6 @@ The "document_id" field in .csv is used as the actual document ID of the line. T
 field is used as the actual content of the corresponding document. Content in "title",
 "date_posted", and "court" fields are omitted.
 
-
 1.2 Normalization of terms
 
 Words are stemmed using NLTK Porter stemmer, and only alphanumerical terms are preserved.
@@ -45,28 +44,50 @@ represents a term in sorted ascending alphabetical order, and each line consists
 itself, document frequency, and pointer to postings file (w.r.t. the postings section)
 
 postings.txt:
-There are 3 sections corresponding to positions, documents, and lengths. The positions section
-are a set of lines such that each line contains the positional indices of a term in a specific
-document ordered in ascending order by term and document ID as tie breaker. The documents section
-is the postings information, each line corresponds to the term in the line in dictionary.txt,
-and each line contains a list of triples of document ID, term frequency, and positional pointer
-to this postings.txt. The lengths section is the vector lengths of each document, each line
-represents one document, containing the document ID and length of vector.
+There are 3 sections corresponding to positions, documents, and lengths. The file is a binary
+file. The positions section contains the positional indices of a term in a specific document
+ordered in ascending order by term and document ID as tie breaker. The documents section
+is the postings information, containing information corresponding to each line in dictionary.txt
+about document ID, term frequency, and positional index pointer (in the postings file). The
+lengths section is the vector lengths in double precision (64-bits) of each document. Document
+IDs are not the exact same as original when stored in the postings file, but instead, is the
+actual document ID subtracted by the smallest document ID.
 
-1.5 In-memory and disk techniques
+1.5 Scaling
 
-Since the input data is too big, BSBI is applied.
+Since the input data is too big, a technique similar to BSBI is applied. But to simplify the code,
+the blocks are separated by the number of documents instead of the actual size of files. This
+gives similar performance to BSBI.
+
+Intermediate files are dictionaryN.txt, postingsN.txt, positionsN.txt, lengthsN.txt, where N
+denotes the index of block based at 0. They corresponds to the dictionary file of the block
+and the three sections of the postings file of the block respectively. The number of files in
+each block is 500.
+
+
+2. Parsing queries
+
+
+3. Searching and ranking
+
+3.1 Preparatory work
+
+Before searching and ranking, information from document files are loaded. Information loaded
+to memory at this stage is the full dictionary, including terms and their corresponding
+document frequencies and postings pointers. In addition, the two base pointers stored at the
+top of the dictionary file, and the vector lengths of all documents are also processed and
+loaded to memory.
 
 == Files included with this submission ==
 
 index.py: required source code of indexing
 search.py: required source code of searching
-shared.py: shared code for index.py and search.py
-dictionary.txt: generated dictionary using index.py with data in Reuters
-postings.txt: generated postings list using index.py with data in Reuters
-lengths.txt: generated length of vector of each document using index.py with data Reuters
+file_io.py: helper functions for reading and writing files
+normalize.py: helper functions for normalizing terms
+widths.py: constants of widths of each type of number of store.
+dictionary.txt: generated dictionary using index.py with given dataset
+postings.txt: generated postings list using index.py with given dataset
 README.txt: this file
-ESSAY.txt: answers to essay questions
 
 == Statement of individual work ==
 
@@ -109,9 +130,6 @@ https://www.programiz.com/python-programming/reading-csv-files
 
 CSV field size exception handling:
 https://stackoverflow.com/questions/15063936/csv-error-field-larger-than-field-limit-131072
-
-Python array index in for loop help:
-https://stackoverflow.com/questions/1011938/python-loop-that-also-accesses-previous-and-next-values
 
 Roman numeral regex:
 https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch06s09.html
