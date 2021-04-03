@@ -6,7 +6,8 @@ from array import array
 from heapq import heappush, heappop
 
 from normalize import process_doc
-from file_io import load_dict, read_doc_id, read_tf, read_position_pointer, read_positional_index, write_int_bin_file
+from file_io import load_dict, read_doc_id, read_tf, read_position_pointer, read_positional_index, write_int_bin_file, \
+    read_float_bin_file, write_float_bin_file
 from widths import pos_width, post_width, tf_width, pos_pointer_width, doc_width, pos_byte_width, smallest_doc_id, \
     post_byte_width, tf_byte_width, pos_pointer_byte_width, doc_byte_width, double_byte_width
 
@@ -146,7 +147,6 @@ def merge_blocks(block_count, out_dict, out_postings):
         leading_term = heappop(leading_terms)
         update_leading_term(dictionary_iters, leading_term, leading_terms)
         word = leading_term[0]
-        post_pointers[word] = pointer
         while leading_terms and leading_terms[0][0] == word:
             term_block_info = heappop(leading_terms)
             update_leading_term(dictionary_iters, term_block_info, leading_terms)
@@ -157,10 +157,8 @@ def merge_blocks(block_count, out_dict, out_postings):
         lf = lengths_files[i]
         doc = read_doc_id(lf)
         write_int_bin_file(post_writer, doc, post_byte_width)
-        length = array('d')
-        length.frombytes(lf.read(double_byte_width))
-        print(length)
-        length.tofile(post_writer)
+        length = read_float_bin_file(lf)
+        write_float_bin_file(post_writer, length)
 
     # Close files
     dict_writer.close()
@@ -226,9 +224,10 @@ def read_data(reader):
     doc_len = {}
     for row in reader:
         if block_count >= block_size:
+            # TODO: delete
             write_temp(doc_freq, dictionary, doc_len, block_index)
-            # TODO: write_dict_postings(doc_freq, dictionary, doc_len,
-            #                     f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
+            write_dict_postings(doc_freq, dictionary, doc_len,
+                                f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
             doc_freq = {}
             dictionary = {}
             doc_len = {}
@@ -254,8 +253,9 @@ def read_data(reader):
         if block_index > 3:
             break
     write_temp(doc_freq, dictionary, doc_len, block_index)
-    # TODO: write_dict_postings(doc_freq, dictionary, doc_len,
-    #                     f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
+    # TODO: delete
+    write_dict_postings(doc_freq, dictionary, doc_len,
+                        f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
     return block_index + 1
 
 
@@ -314,9 +314,8 @@ def write_temp(doc_freq, dictionary, doc_len, block_index):
     postings_pointer = pointer
     pointer = 0
     for word in words:
-        post_pointers[word] = {}
+        post_pointers[word] = pointer
         for posting in dictionary[word]:
-            post_pointers[word] = pointer
             post_writer.write((posting['id'] - smallest_doc_id)
                               .to_bytes(length=post_byte_width, byteorder='big', signed=False))
             post_writer.write((posting['tf']).to_bytes(length=tf_byte_width, byteorder='big', signed=False))

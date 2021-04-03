@@ -2,7 +2,7 @@ import os
 from array import array
 from heapq import heappush, heappop
 
-from widths import post_byte_width, tf_byte_width, pos_pointer_byte_width, pos_byte_width
+from widths import post_byte_width, tf_byte_width, pos_pointer_byte_width, pos_byte_width, double_byte_width
 
 
 def load_dict(df, sub_dict):
@@ -79,6 +79,26 @@ def write_int_bin_file(file_writer, number, width):
     file_writer.write(number.to_bytes(length=width, byteorder='big', signed=False))
 
 
+def read_float_bin_file(file):
+    """
+    Reads floating point number from binary file
+    :param file: the file to read
+    :return: the floating point number array containing only this number as element
+    """
+    arr = array('d')
+    arr.frombytes(file.read(double_byte_width))
+    return arr
+
+
+def write_float_bin_file(file, arr):
+    """
+    Writes floating point number to binary file
+    :param file: the file to write to
+    :param arr: an array consisting of only this number to write as element
+    """
+    arr.tofile(file)
+
+
 """
 file = open('test.txt', 'wb')
 a = array('d', [3.33, 1, 9.8])
@@ -92,6 +112,12 @@ file.seek(16)
 b.fromstring(file.read(16))
 print(a[1])
 print(b)
+file.seek(50)
+string = file.read(8)
+if string:
+    print('have')
+else:
+    print('no')
 file.write((2000).to_bytes(length=2, byteorder='big', signed=False))
 file.close()
 file = open('test.txt', 'rb')
