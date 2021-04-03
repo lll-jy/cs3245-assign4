@@ -6,7 +6,7 @@ from array import array
 from heapq import heappush, heappop
 
 from normalize import process_doc
-from read import load_dict
+from file_io import load_dict, read_doc_id, read_tf, read_position_pointer, read_positional_index, write_int_bin_file
 from widths import pos_width, post_width, tf_width, pos_pointer_width, doc_width, pos_byte_width, smallest_doc_id, \
     post_byte_width, tf_byte_width, pos_pointer_byte_width, doc_byte_width, double_byte_width
 
@@ -24,9 +24,6 @@ def build_index(in_dir, out_dict, out_postings):
 
     # Initializations
     csv.field_size_limit(sys.maxsize)
-    dictionary = {}
-    doc_freq = {}
-    doc_len = {}
 
     # Open file
     in_file = open(in_dir, 'r')
@@ -77,25 +74,16 @@ def merge_blocks(block_count, out_dict, out_postings):
     dictionary_iters = []
     pos_pointers = {}
     pointer = 0
-    for i in index_list:
-        dict_iter = iter(dictionaries[i])
-        dictionary_iters.append(dict_iter)
-        heappush(leading_terms, (next(dictionary_iters[i]), i))
+    setup_iters(dictionaries, dictionary_iters, index_list, leading_terms)
     while leading_terms:
         leading_term = heappop(leading_terms)
-        block_index = leading_term[1]
-        next_term = next(dictionary_iters[block_index], None)
-        if next_term:
-            heappush(leading_terms, (next_term, block_index))
+        update_leading_term(dictionary_iters, leading_term, leading_terms)
         word = leading_term[0]
         collections = [leading_term]
         while leading_terms and leading_terms[0][0] == word:
             term_block_info = heappop(leading_terms)
             collections.append(term_block_info)
-            block_index = term_block_info[1]
-            next_term = next(dictionary_iters[block_index], None)
-            if next_term:
-                heappush(leading_terms, (next_term, block_index))
+            update_leading_term(dictionary_iters, term_block_info, leading_terms)
         pos_pointers[word] = {}
         for block in collections:
             block_index = block[1]
@@ -105,13 +93,13 @@ def merge_blocks(block_count, out_dict, out_postings):
             posf = positions_files[block_index]
             pf.seek(ptr)
             for _ in range(df):
-                doc = int.from_bytes(pf.read(post_byte_width), byteorder='big')
-                tf = int.from_bytes(pf.read(tf_byte_width), byteorder='big')
-                pp = int.from_bytes(pf.read(pos_pointer_byte_width), byteorder='big')
+                doc = read_doc_id(pf)
+                tf = read_tf(pf)
+                pp = read_position_pointer(pf)
                 posf.seek(pp)
                 for _ in range(tf):
-                    pos = int.from_bytes(posf.read(pos_byte_width), byteorder='big')
-                    post_writer.write(pos.to_bytes(length=pos_byte_width, byteorder='big', signed=False))
+                    pos = read_positional_index(posf)
+                    write_int_bin_file(post_writer, pos, pos_byte_width)
                 pos_pointers[word][doc] = pointer
                 pointer += tf * pos_byte_width
 
@@ -121,16 +109,10 @@ def merge_blocks(block_count, out_dict, out_postings):
     doc_freq = {}
     postings_base_pointer = pointer
     pointer = 0
-    for i in index_list:
-        dict_iter = iter(dictionaries[i])
-        dictionary_iters.append(dict_iter)
-        heappush(leading_terms, (next(dictionary_iters[i]), i))
+    setup_iters(dictionaries, dictionary_iters, index_list, leading_terms)
     while leading_terms:
         leading_term = heappop(leading_terms)
-        block_index = leading_term[1]
-        next_term = next(dictionary_iters[block_index], None)
-        if next_term:
-            heappush(leading_terms, (next_term, block_index))
+        update_leading_term(dictionary_iters, leading_term, leading_terms)
         word = leading_term[0]
         post_pointers[word] = pointer
         doc_freq[word] = 0
@@ -138,10 +120,7 @@ def merge_blocks(block_count, out_dict, out_postings):
         while leading_terms and leading_terms[0][0] == word:
             term_block_info = heappop(leading_terms)
             collections.append(term_block_info)
-            block_index = term_block_info[1]
-            next_term = next(dictionary_iters[block_index], None)
-            if next_term:
-                heappush(leading_terms, (next_term, block_index))
+            update_leading_term(dictionary_iters, term_block_info, leading_terms)
         for block in collections:
             block_index = block[1]
             df = dictionaries[block_index][word]['df']
@@ -150,44 +129,34 @@ def merge_blocks(block_count, out_dict, out_postings):
             pf.seek(ptr)
             doc_freq[word] += df
             for _ in range(df):
-                doc = int.from_bytes(pf.read(post_byte_width), byteorder='big')
-                tf = int.from_bytes(pf.read(tf_byte_width), byteorder='big')
+                doc = read_doc_id(pf)
+                tf = read_tf(pf)
                 pf.read(pos_pointer_byte_width)
-                post_writer.write(doc.to_bytes(length=post_byte_width, byteorder='big', signed=False))
-                post_writer.write(tf.to_bytes(length=tf_byte_width, byteorder='big', signed=False))
-                post_writer.write((pos_pointers[word][doc])
-                                  .to_bytes(length=pos_pointer_byte_width, byteorder='big', signed=False))
+                write_int_bin_file(post_writer, doc, post_byte_width)
+                write_int_bin_file(post_writer, tf, tf_byte_width)
+                write_int_bin_file(post_writer, pos_pointers[word][doc], pos_pointer_byte_width)
                 pointer += doc_byte_width
 
     # Print dictionary
     lengths_base_pointer = pointer + postings_base_pointer
     dictionary_iters = []
-    for i in index_list:
-        dict_iter = iter(dictionaries[i])
-        dictionary_iters.append(dict_iter)
-        heappush(leading_terms, (next(dictionary_iters[i]), i))
+    setup_iters(dictionaries, dictionary_iters, index_list, leading_terms)
     dict_writer.write(f'{postings_base_pointer} {lengths_base_pointer}\n')
     while leading_terms:
         leading_term = heappop(leading_terms)
-        block_index = leading_term[1]
-        next_term = next(dictionary_iters[block_index], None)
-        if next_term:
-            heappush(leading_terms, (next_term, block_index))
+        update_leading_term(dictionary_iters, leading_term, leading_terms)
         word = leading_term[0]
         post_pointers[word] = pointer
         while leading_terms and leading_terms[0][0] == word:
             term_block_info = heappop(leading_terms)
-            block_index = term_block_info[1]
-            next_term = next(dictionary_iters[block_index], None)
-            if next_term:
-                heappush(leading_terms, (next_term, block_index))
+            update_leading_term(dictionary_iters, term_block_info, leading_terms)
         dict_writer.write(f'{word} {doc_freq[word]} {post_pointers[word]}\n')
 
     # Print lengths
     for i in index_list:
         lf = lengths_files[i]
-        doc = int.from_bytes(lf.read(post_byte_width), byteorder='big')
-        post_writer.write(doc.to_bytes(length=post_byte_width, byteorder='big', signed=False))
+        doc = read_doc_id(lf)
+        write_int_bin_file(post_writer, doc, post_byte_width)
         length = array('d')
         length.frombytes(lf.read(double_byte_width))
         print(length)
@@ -205,7 +174,7 @@ def merge_blocks(block_count, out_dict, out_postings):
     # TODO: delete files
 
 
-#def read_data(dictionary, doc_freq, doc_len, reader):
+# def read_data(dictionary, doc_freq, doc_len, reader):
     """
     Reads in data from the file reader of dataset input
     :param dictionary: the dictionary containing the document ID, term frequency, and positional indices list of each
@@ -214,6 +183,35 @@ def merge_blocks(block_count, out_dict, out_postings):
     :param doc_len: the document vector lengths dictionary
     :param reader: the file reader of dataset input
     """
+
+
+def update_leading_term(dictionary_iters, term, leading_terms):
+    """
+    Update the leading terms after popping
+    :param dictionary_iters: the list of iterable dictionary terms for each block
+    :param term: the term just popped
+    :param leading_terms: the heap of leading terms to update
+    """
+    block_index = term[1]
+    next_term = next(dictionary_iters[block_index], None)
+    if next_term:
+        heappush(leading_terms, (next_term, block_index))
+
+
+def setup_iters(dictionaries, dictionary_iters, index_list, leading_terms):
+    """
+    Set up iterable lists for dictionaries for each block
+    :param dictionaries: the dictionaries for each block
+    :param dictionary_iters: the iterable lists for each block
+    :param index_list: the block indices
+    :param leading_terms: the heap of terms to initialize
+    """
+    for i in index_list:
+        dict_iter = iter(dictionaries[i])
+        dictionary_iters.append(dict_iter)
+        heappush(leading_terms, (next(dictionary_iters[i]), i))
+
+
 def read_data(reader):
     """
     Reads in data from the file reader of dataset input

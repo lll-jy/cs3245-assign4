@@ -3,7 +3,7 @@ import getopt
 import sys
 
 # Global variables
-from read import load_dict
+from file_io import load_dict
 from widths import doc_width
 
 pf = None
