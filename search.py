@@ -63,7 +63,7 @@ def read_position(word, doc_index, index):
     """
     Read the positional index
     :param word: the word to search for
-    :param doc_index: the document index of the word to search for
+    :param doc_index: the document index of the word to search for, not the docID
     :param index: the i-th appearance of the term
     :return: the positional index
     """

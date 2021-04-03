@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import csv
 import getopt
+import os
 import sys
 from array import array
 from heapq import heappush, heappop
@@ -31,16 +32,13 @@ def build_index(in_dir, out_dict, out_postings):
     reader = csv.DictReader(in_file)
 
     # Read each file, the files are already in ascending order of document ID
-    # read_data(dictionary, doc_freq, doc_len, reader)
     block_count = read_data(reader)
 
     # Write output files
     merge_blocks(block_count, out_dict, out_postings)
-    # write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings)
 
     # Close file
     in_file.close()
-    print('end')
 
 
 def merge_blocks(block_count, out_dict, out_postings):
@@ -169,18 +167,11 @@ def merge_blocks(block_count, out_dict, out_postings):
         f.close()
     for f in lengths_files:
         f.close()
-    # TODO: delete files
-
-
-# def read_data(dictionary, doc_freq, doc_len, reader):
-    """
-    Reads in data from the file reader of dataset input
-    :param dictionary: the dictionary containing the document ID, term frequency, and positional indices list of each
-    word of each document that contains this term
-    :param doc_freq: the document frequency dictionary
-    :param doc_len: the document vector lengths dictionary
-    :param reader: the file reader of dataset input
-    """
+    for i in index_list:
+        os.remove(f'dictionary{i}.txt')
+        os.remove(f'postings{i}.txt')
+        os.remove(f'positions{i}.txt')
+        os.remove(f'lengths{i}.txt')
 
 
 def update_leading_term(dictionary_iters, term, leading_terms):
@@ -216,7 +207,7 @@ def read_data(reader):
     :param reader: the file reader of dataset input
     :return the number of blocks
     """
-    block_size = 1
+    block_size = 500
     block_index = 0
     block_count = 0
     dictionary = {}
@@ -224,10 +215,7 @@ def read_data(reader):
     doc_len = {}
     for row in reader:
         if block_count >= block_size:
-            # TODO: delete
             write_temp(doc_freq, dictionary, doc_len, block_index)
-            write_dict_postings(doc_freq, dictionary, doc_len,
-                                f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
             doc_freq = {}
             dictionary = {}
             doc_len = {}
@@ -250,12 +238,7 @@ def read_data(reader):
             doc_freq[word] += 1
         doc_len[document_id] = process_res[2]
         block_count += 1
-        if block_index > 3:
-            break
     write_temp(doc_freq, dictionary, doc_len, block_index)
-    # TODO: delete
-    write_dict_postings(doc_freq, dictionary, doc_len,
-                        f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
     return block_index + 1
 
 
@@ -342,103 +325,6 @@ def write_temp(doc_freq, dictionary, doc_len, block_index):
     len_writer.close()
 
 
-def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
-    """
-    Writes the information from dataset file to dictionary and postings
-    :param doc_freq: the document frequency dictionary
-    :param dictionary: the dictionary containing the document ID, term frequency, and positional indices list of each
-    word of each document that contains this term
-    :param doc_len: the dictionary of the vector length of each document
-    :param out_dict: the output file for dictionary
-    :param out_postings: the output file for postings
-    :return: none
-    """
-    """
-    dictionary.txt:
-    postings_start_pointer lengths_start_pointer
-    term1 df pointer
-    term2 df pointer
-    ... 
-    ------
-    postings.txt:
-    (of term1 doc1) pos1 pos2 ...
-    (of term1 doc2) pos1 pos2 ...
-    ...
-    (of term2 doc1) pos1 pos2 ...
-    ...
-    
-    (of term 1) doc_id1 term_freq1 positions_pointer1 doc_id2 term_freq2 positions_pointer2 ...
-    (of term 2) doc_id1 term_freq1 positions_pointer1 ...
-    ...
-    
-    doc_id1 len1
-    doc_id2 len2
-    ...
-    """
-    # Initialization
-    dict_writer = open(out_dict, 'w')
-    post_writer = open(out_postings, 'w')
-    words = sorted(doc_freq)
-    pos_pointers = {}
-    post_pointers = {}
-    pointer = 0
-
-    # TODO: max
-    max_positional_index = 0
-    max_doc_id = 0
-    max_term_freq = 0
-    max_positions_pointer = 0
-    # Get the positions pointer and print positions to the postings file
-    for word in words:
-        pos_pointers[word] = {}
-        for posting in dictionary[word]:
-            pos_pointers[word][posting['id']] = pointer
-            for pos in posting['positions']:
-                post_writer.write(f'{str(pos).zfill(pos_width)} ')
-                max_positional_index = max(pos, max_positional_index)
-                pointer += pos_width + 1
-            post_writer.write('\n')
-            pointer += 1
-
-    # Print the postings
-    postings_pointer = pointer
-    pointer = 0
-    for word in words:
-        post_pointers[word] = {}
-        for posting in dictionary[word]:
-            post_pointers[word] = pointer
-            max_term_freq = max(posting['tf'], max_term_freq)
-            post_writer.write(f"{str(posting['id']).zfill(post_width)} {str(posting['tf']).zfill(tf_width)} "
-                              f"{str(pos_pointers[word][posting['id']]).zfill(pos_pointer_width)} ")
-            pointer += doc_width
-        post_writer.write('\n')
-        pointer += 1
-
-    # Print lengths
-    lengths_pointer = pointer + postings_pointer
-    for doc in doc_len:
-        max_doc_id = max(doc, max_doc_id)
-        post_writer.write(f"{doc} {doc_len[doc]}\n")
-
-    # Print dictionary
-    dict_writer.write(f"{postings_pointer} {lengths_pointer}\n")
-    for word in words:
-        dict_writer.write(f"{word} {str(doc_freq[word])} {post_pointers[word]}\n")
-
-    # Close files
-    dict_writer.close()
-    post_writer.close()
-
-    # Dummy
-    max_positions_pointer = postings_pointer
-    """
-    print(max_positional_index)
-    print(max_doc_id)
-    print(max_term_freq)
-    print(max_positions_pointer)
-    """
-
-
 input_directory = output_file_dictionary = output_file_postings = None
 
 try:
@@ -460,15 +346,6 @@ for o, a in opts:
 
 if input_directory == None or output_file_postings == None or output_file_dictionary == None:
     usage()
-    """
-    try:
-        _create_unverified_https_context = ssl._create_unverified_context
-    except AttributeError:
-        pass
-    else:
-        ssl._create_default_https_context = _create_unverified_https_context
-    nltk.download('punkt')
-    """
     sys.exit(2)
 
 build_index(input_directory, output_file_dictionary, output_file_postings)
