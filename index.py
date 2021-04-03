@@ -9,8 +9,8 @@ from heapq import heappush, heappop
 from normalize import process_doc
 from file_io import load_dict, read_doc_id, read_tf, read_position_pointer, read_positional_index, write_int_bin_file, \
     read_float_bin_file, write_float_bin_file
-from widths import pos_width, post_width, tf_width, pos_pointer_width, doc_width, pos_byte_width, smallest_doc_id, \
-    post_byte_width, tf_byte_width, pos_pointer_byte_width, doc_byte_width, double_byte_width
+from widths import pos_byte_width, smallest_doc_id, post_byte_width, tf_byte_width, pos_pointer_byte_width, \
+    doc_byte_width
 
 
 def usage():
@@ -36,6 +36,7 @@ def build_index(in_dir, out_dict, out_postings):
 
     # Write output files
     merge_blocks(block_count, out_dict, out_postings)
+    # merge_blocks(35, out_dict, out_postings)
 
     # Close file
     in_file.close()
@@ -65,7 +66,7 @@ def merge_blocks(block_count, out_dict, out_postings):
         lengths_files.append(open(f'lengths{i}.txt', 'rb'))
 
     # Prepare to write files
-    dict_writer = open(out_dict, 'w')
+    # dict_writer = open(out_dict, 'a')
     post_writer = open(out_postings, 'wb')
 
     # Print positions
@@ -140,7 +141,9 @@ def merge_blocks(block_count, out_dict, out_postings):
     lengths_base_pointer = pointer + postings_base_pointer
     dictionary_iters = []
     setup_iters(dictionaries, dictionary_iters, index_list, leading_terms)
+    dict_writer = open(out_dict, 'a')
     dict_writer.write(f'{postings_base_pointer} {lengths_base_pointer}\n')
+    dict_writer.close()
     while leading_terms:
         leading_term = heappop(leading_terms)
         update_leading_term(dictionary_iters, leading_term, leading_terms)
@@ -148,7 +151,9 @@ def merge_blocks(block_count, out_dict, out_postings):
         while leading_terms and leading_terms[0][0] == word:
             term_block_info = heappop(leading_terms)
             update_leading_term(dictionary_iters, term_block_info, leading_terms)
+        dict_writer = open(out_dict, 'a')
         dict_writer.write(f'{word} {doc_freq[word]} {post_pointers[word]}\n')
+        dict_writer.close()
 
     # Print lengths
     for i in index_list:
@@ -159,7 +164,7 @@ def merge_blocks(block_count, out_dict, out_postings):
         write_float_bin_file(post_writer, length)
 
     # Close files
-    dict_writer.close()
+    # dict_writer.close()
     post_writer.close()
     for f in posting_files:
         f.close()
@@ -167,11 +172,13 @@ def merge_blocks(block_count, out_dict, out_postings):
         f.close()
     for f in lengths_files:
         f.close()
+    """
     for i in index_list:
         os.remove(f'dictionary{i}.txt')
         os.remove(f'postings{i}.txt')
         os.remove(f'positions{i}.txt')
         os.remove(f'lengths{i}.txt')
+    """
 
 
 def update_leading_term(dictionary_iters, term, leading_terms):
@@ -290,7 +297,7 @@ def write_temp(doc_freq, dictionary, doc_len, block_index):
         for posting in dictionary[word]:
             pos_pointers[word][posting['id']] = pointer
             for pos in posting['positions']:
-                pos_writer.write(pos.to_bytes(length=pos_byte_width, byteorder='big', signed=False))
+                write_int_bin_file(pos_writer, pos, pos_byte_width)
                 pointer += pos_byte_width
 
     # Print the postings
@@ -299,17 +306,15 @@ def write_temp(doc_freq, dictionary, doc_len, block_index):
     for word in words:
         post_pointers[word] = pointer
         for posting in dictionary[word]:
-            post_writer.write((posting['id'] - smallest_doc_id)
-                              .to_bytes(length=post_byte_width, byteorder='big', signed=False))
-            post_writer.write((posting['tf']).to_bytes(length=tf_byte_width, byteorder='big', signed=False))
-            post_writer.write((pos_pointers[word][posting['id']])
-                              .to_bytes(length=pos_pointer_byte_width, byteorder='big', signed=False))
+            write_int_bin_file(post_writer, posting['id'] - smallest_doc_id, post_byte_width)
+            write_int_bin_file(post_writer, posting['tf'], tf_byte_width)
+            write_int_bin_file(post_writer, pos_pointers[word][posting['id']], pos_pointer_byte_width)
             pointer += doc_byte_width
 
     # Print lengths
     lengths_pointer = pointer + postings_pointer
     for doc in doc_len:
-        len_writer.write((doc - smallest_doc_id).to_bytes(length=post_byte_width, byteorder='big', signed=False))
+        write_int_bin_file(len_writer, doc - smallest_doc_id, post_byte_width)
         len_float = array('d', [doc_len[doc]])
         len_float.tofile(len_writer)
 
