@@ -9,5 +9,6 @@ post_byte_width = 3
 tf_byte_width = 2
 pos_pointer_byte_width = 3
 doc_byte_width = post_byte_width + tf_byte_width + pos_pointer_byte_width
+double_byte_width = 8
 
 smallest_doc_id = 246391

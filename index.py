@@ -3,10 +3,12 @@ import csv
 import getopt
 import sys
 from array import array
+from heapq import heappush, heappop
 
 from normalize import process_doc
+from read import load_dict
 from widths import pos_width, post_width, tf_width, pos_pointer_width, doc_width, pos_byte_width, smallest_doc_id, \
-    post_byte_width, tf_byte_width, pos_pointer_byte_width, doc_byte_width
+    post_byte_width, tf_byte_width, pos_pointer_byte_width, doc_byte_width, double_byte_width
 
 
 def usage():
@@ -50,8 +52,122 @@ def merge_blocks(block_count, out_dict, out_postings):
     :param out_dict: the output dictionary file
     :param out_postings: the output postings file
     """
-    for i in list(range(0, block_count)):
-        print(1)
+    # Load dictionaries and open files
+    index_list = list(range(block_count))
+    dictionaries = []
+    posting_files = []
+    positions_files = []
+    lengths_files = []
+    for i in index_list:
+        df = open(f'dictionary{i}.txt', 'r')
+        df.readline()
+        dictionary = {}
+        load_dict(df, dictionary)
+        dictionaries.append(dictionary)
+        posting_files.append(open(f'postings{i}.txt', 'rb'))
+        positions_files.append(open(f'positions{i}.txt', 'rb'))
+        lengths_files.append(open(f'lengths{i}.txt', 'rb'))
+
+    # Prepare to write files
+    dict_writer = open(out_dict, 'w')
+    post_writer = open(out_postings, 'wb')
+
+    # Print positions
+    leading_terms = []
+    pos_pointers = {}
+    pointer = 0
+    for i in index_list:
+        heappush(leading_terms, (next(iter(dictionaries[i])), i))
+    while leading_terms:
+        leading_term = heappop(leading_terms)
+        word = leading_term[0]
+        collections = [leading_term]
+        while leading_terms and leading_terms[0][0] == word:
+            collections.append(heappop(leading_terms))
+        pos_pointers[word] = {}
+        for block in collections:
+            block_index = block[1]
+            df = dictionaries[block_index][word]['df']
+            ptr = dictionaries[block_index][word]['ptr']
+            pf = posting_files[block_index]
+            posf = positions_files[block_index]
+            pf.seek(ptr)
+            for _ in range(df):
+                doc = int.from_bytes(pf.read(post_byte_width), byteorder='big')
+                tf = int.from_bytes(pf.read(tf_byte_width), byteorder='big')
+                pp = int.from_bytes(pf.read(pos_pointer_byte_width), byteorder='big')
+                posf.seek(pp)
+                for _ in range(tf):
+                    pos = int.from_bytes(posf.read(pos_byte_width), byteorder='big')
+                    post_writer.write(pos.to_bytes(length=pos_byte_width, byteorder='big', signed=False))
+                pos_pointers[word][doc] = pointer
+                pointer += tf * pos_byte_width
+
+    # Print postings
+    post_pointers = {}
+    doc_freq = {}
+    postings_base_pointer = pointer
+    pointer = 0
+    for i in index_list:
+        heappush(leading_terms, (next(iter(dictionaries[i])), i))
+    while leading_terms:
+        leading_term = heappop(leading_terms)
+        word = leading_term[0]
+        post_pointers[word] = pointer
+        doc_freq[word] = 0
+        collections = [leading_term]
+        while leading_terms and leading_terms[0][0] == word:
+            collections.append(heappop(leading_terms))
+        for block in collections:
+            block_index = block[1]
+            df = dictionaries[block_index][word]['df']
+            ptr = dictionaries[block_index][word]['ptr']
+            pf = posting_files[block_index]
+            pf.seek(ptr)
+            doc_freq[word] += df
+            for _ in range(df):
+                doc = int.from_bytes(pf.read(post_byte_width), byteorder='big')
+                tf = int.from_bytes(pf.read(tf_byte_width), byteorder='big')
+                pf.read(pos_pointer_byte_width)
+                post_writer.write(doc.to_bytes(length=post_byte_width, byteorder='big', signed=False))
+                post_writer.write(tf.to_bytes(length=tf_byte_width, byteorder='big', signed=False))
+                post_writer.write((pos_pointers[word][doc])
+                                  .to_bytes(length=pos_pointer_byte_width, byteorder='big', signed=False))
+                pointer += doc_byte_width
+
+    # Print dictionary
+    lengths_base_pointer = pointer + postings_base_pointer
+    for i in index_list:
+        heappush(leading_terms, (next(iter(dictionaries[i])), i))
+    dict_writer.write(f'{postings_base_pointer} {lengths_base_pointer}\n')
+    while leading_terms:
+        leading_term = heappop(leading_terms)
+        word = leading_term[0]
+        post_pointers[word] = pointer
+        while leading_terms and leading_terms[0][0] == word:
+            heappop(leading_terms)
+        dict_writer.write(f'{word} {doc_freq[word]} {post_pointers[word]}\n')
+
+    # Print lengths
+    for i in index_list:
+        lf = lengths_files[i]
+        doc = int.from_bytes(lf.read(post_byte_width), byteorder='big')
+        post_writer.write(doc.to_bytes(length=post_byte_width, byteorder='big', signed=False))
+        length = array('d')
+        length.frombytes(lf.read(double_byte_width))
+        print(length)
+        length.tofile(post_writer)
+
+    # Close files
+    dict_writer.close()
+    post_writer.close()
+    for f in posting_files:
+        f.close()
+    for f in positions_files:
+        f.close()
+    for f in lengths_files:
+        f.close()
+    # TODO: delete files
 
 
 #def read_data(dictionary, doc_freq, doc_len, reader):
@@ -69,7 +185,7 @@ def read_data(reader):
     :param reader: the file reader of dataset input
     :return the number of blocks
     """
-    block_size = 10
+    block_size = 1
     block_index = 0
     block_count = 0
     dictionary = {}
@@ -78,8 +194,8 @@ def read_data(reader):
     for row in reader:
         if block_count >= block_size:
             write_temp(doc_freq, dictionary, doc_len, block_index)
-            write_dict_postings(doc_freq, dictionary, doc_len,
-                                f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
+            # TODO: write_dict_postings(doc_freq, dictionary, doc_len,
+            #                     f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
             doc_freq = {}
             dictionary = {}
             doc_len = {}
@@ -105,8 +221,8 @@ def read_data(reader):
         if block_index > 3:
             break
     write_temp(doc_freq, dictionary, doc_len, block_index)
-    write_dict_postings(doc_freq, dictionary, doc_len,
-                        f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
+    # TODO: write_dict_postings(doc_freq, dictionary, doc_len,
+    #                     f'dictionary_text{block_index}.txt', f'postings_text{block_index}.txt')
     return block_index + 1
 
 
@@ -235,6 +351,7 @@ def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
     post_pointers = {}
     pointer = 0
 
+    # TODO: max
     max_positional_index = 0
     max_doc_id = 0
     max_term_freq = 0
@@ -282,10 +399,12 @@ def write_dict_postings(doc_freq, dictionary, doc_len, out_dict, out_postings):
 
     # Dummy
     max_positions_pointer = postings_pointer
+    """
     print(max_positional_index)
     print(max_doc_id)
     print(max_term_freq)
     print(max_positions_pointer)
+    """
 
 
 input_directory = output_file_dictionary = output_file_postings = None
