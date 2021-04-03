@@ -21,6 +21,20 @@ def load_dict(df, sub_dict):
     df.close()
 
 
+d = {
+    'a': 1,
+    'b': 2,
+    'c': 3
+}
+i = iter(d)
+print(next(i, None))
+print(next(i, None))
+t = next(i, None)
+if t:
+    print(t)
+s = next(i, None)
+if not s:
+    print('here')
 """
 file = open('test.txt', 'wb')
 a = array('d', [3.33, 1, 9.8])

@@ -74,16 +74,28 @@ def merge_blocks(block_count, out_dict, out_postings):
 
     # Print positions
     leading_terms = []
+    dictionary_iters = []
     pos_pointers = {}
     pointer = 0
     for i in index_list:
-        heappush(leading_terms, (next(iter(dictionaries[i])), i))
+        dict_iter = iter(dictionaries[i])
+        dictionary_iters.append(dict_iter)
+        heappush(leading_terms, (next(dictionary_iters[i]), i))
     while leading_terms:
         leading_term = heappop(leading_terms)
+        block_index = leading_term[1]
+        next_term = next(dictionary_iters[block_index], None)
+        if next_term:
+            heappush(leading_terms, (next_term, block_index))
         word = leading_term[0]
         collections = [leading_term]
         while leading_terms and leading_terms[0][0] == word:
-            collections.append(heappop(leading_terms))
+            term_block_info = heappop(leading_terms)
+            collections.append(term_block_info)
+            block_index = term_block_info[1]
+            next_term = next(dictionary_iters[block_index], None)
+            if next_term:
+                heappush(leading_terms, (next_term, block_index))
         pos_pointers[word] = {}
         for block in collections:
             block_index = block[1]
@@ -104,20 +116,32 @@ def merge_blocks(block_count, out_dict, out_postings):
                 pointer += tf * pos_byte_width
 
     # Print postings
+    dictionary_iters = []
     post_pointers = {}
     doc_freq = {}
     postings_base_pointer = pointer
     pointer = 0
     for i in index_list:
-        heappush(leading_terms, (next(iter(dictionaries[i])), i))
+        dict_iter = iter(dictionaries[i])
+        dictionary_iters.append(dict_iter)
+        heappush(leading_terms, (next(dictionary_iters[i]), i))
     while leading_terms:
         leading_term = heappop(leading_terms)
+        block_index = leading_term[1]
+        next_term = next(dictionary_iters[block_index], None)
+        if next_term:
+            heappush(leading_terms, (next_term, block_index))
         word = leading_term[0]
         post_pointers[word] = pointer
         doc_freq[word] = 0
         collections = [leading_term]
         while leading_terms and leading_terms[0][0] == word:
-            collections.append(heappop(leading_terms))
+            term_block_info = heappop(leading_terms)
+            collections.append(term_block_info)
+            block_index = term_block_info[1]
+            next_term = next(dictionary_iters[block_index], None)
+            if next_term:
+                heappush(leading_terms, (next_term, block_index))
         for block in collections:
             block_index = block[1]
             df = dictionaries[block_index][word]['df']
@@ -137,15 +161,26 @@ def merge_blocks(block_count, out_dict, out_postings):
 
     # Print dictionary
     lengths_base_pointer = pointer + postings_base_pointer
+    dictionary_iters = []
     for i in index_list:
-        heappush(leading_terms, (next(iter(dictionaries[i])), i))
+        dict_iter = iter(dictionaries[i])
+        dictionary_iters.append(dict_iter)
+        heappush(leading_terms, (next(dictionary_iters[i]), i))
     dict_writer.write(f'{postings_base_pointer} {lengths_base_pointer}\n')
     while leading_terms:
         leading_term = heappop(leading_terms)
+        block_index = leading_term[1]
+        next_term = next(dictionary_iters[block_index], None)
+        if next_term:
+            heappush(leading_terms, (next_term, block_index))
         word = leading_term[0]
         post_pointers[word] = pointer
         while leading_terms and leading_terms[0][0] == word:
-            heappop(leading_terms)
+            term_block_info = heappop(leading_terms)
+            block_index = term_block_info[1]
+            next_term = next(dictionary_iters[block_index], None)
+            if next_term:
+                heappush(leading_terms, (next_term, block_index))
         dict_writer.write(f'{word} {doc_freq[word]} {post_pointers[word]}\n')
 
     # Print lengths
