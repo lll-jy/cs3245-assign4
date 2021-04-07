@@ -54,9 +54,18 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             break
         doc_len[doc] = length[0]
 
-    print(dictionary['10'])
-    print('here', read_posting('10', 1))
-    print('there', read_position('10', 1, 1))
+    # print(dictionary['10'])
+    # print('here', read_posting('10', 1))
+    # print('there', read_position('10', 1, 1))
+    i0, _, _ = read_posting('thi', 496)
+    i1, _, _ = read_posting('thi', 497)
+    i2, _, _ = read_posting('thi', 498)
+    print(i0)
+    print(i1)
+    print(i2)
+    print(doc_len[i0])
+    print(doc_len[i1])
+    print(doc_len[i2])
 
 
 def read_position(word, doc_index, index):

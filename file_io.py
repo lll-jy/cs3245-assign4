@@ -1,6 +1,4 @@
-import os
 from array import array
-from heapq import heappush, heappop
 
 from widths import post_byte_width, tf_byte_width, pos_pointer_byte_width, pos_byte_width, double_byte_width
 
