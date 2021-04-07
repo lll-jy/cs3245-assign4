@@ -13,6 +13,9 @@ from widths import pos_byte_width, smallest_doc_id, post_byte_width, tf_byte_wid
     doc_byte_width
 
 
+block_size = 500
+
+
 def usage():
     print("usage: " + sys.argv[0] + " -i dataset-file -d dictionary-file -p postings-file")
 
@@ -158,10 +161,11 @@ def merge_blocks(block_count, out_dict, out_postings):
     # Print lengths
     for i in index_list:
         lf = lengths_files[i]
-        doc = read_doc_id(lf)
-        write_int_bin_file(post_writer, doc, post_byte_width)
-        length = read_float_bin_file(lf)
-        write_float_bin_file(post_writer, length)
+        for _ in range(block_size):
+            doc = read_doc_id(lf)
+            write_int_bin_file(post_writer, doc, post_byte_width)
+            length = read_float_bin_file(lf)
+            write_float_bin_file(post_writer, length)
 
     # Close files
     # dict_writer.close()
@@ -214,7 +218,6 @@ def read_data(reader):
     :param reader: the file reader of dataset input
     :return the number of blocks
     """
-    block_size = 500
     block_index = 0
     block_count = 0
     dictionary = {}
