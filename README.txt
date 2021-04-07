@@ -78,6 +78,24 @@ document frequencies and postings pointers. In addition, the two base pointers s
 top of the dictionary file, and the vector lengths of all documents are also processed and
 loaded to memory.
 
+3.2 Basic ranking scheme
+
+Similar to HW3, lnc.ltc is used to calculate the cosine similarity between the query and each
+document.
+
+The algorithm to calculate cosign scores is derived from the one given in
+the lecture notes. Vectors for queries are actually not normalized to a unit
+vector because this is a shared coefficient for all cosine scores, and thus
+it makes no difference in the ranking of score.
+
+Terms in the query that does not appear in the dictionary will not have effect
+on the scores of documents. Omitting such terms in the calculation of score
+makes sense because, firstly, the result of log-frequency of the term in any
+document would be 0 makes the weight of term in any document 0; and, secondly,
+actual document frequency is 0, and thus makes idf, and hence weight of term
+in the query, undefined as the denominator is 0.
+
+
 == Files included with this submission ==
 
 index.py: required source code of indexing
