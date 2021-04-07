@@ -13,6 +13,9 @@ from widths import pos_byte_width, smallest_doc_id, post_byte_width, tf_byte_wid
     doc_byte_width
 
 
+block_size = 500
+
+
 def usage():
     print("usage: " + sys.argv[0] + " -i dataset-file -d dictionary-file -p postings-file")
 
@@ -158,10 +161,13 @@ def merge_blocks(block_count, out_dict, out_postings):
     # Print lengths
     for i in index_list:
         lf = lengths_files[i]
-        doc = read_doc_id(lf)
-        write_int_bin_file(post_writer, doc, post_byte_width)
-        length = read_float_bin_file(lf)
-        write_float_bin_file(post_writer, length)
+        for _ in range(block_size):
+            doc = read_doc_id(lf)
+            length = read_float_bin_file(lf)
+            if not length:
+                break
+            write_int_bin_file(post_writer, doc, post_byte_width)
+            write_float_bin_file(post_writer, length)
 
     # Close files
     # dict_writer.close()
@@ -214,7 +220,6 @@ def read_data(reader):
     :param reader: the file reader of dataset input
     :return the number of blocks
     """
-    block_size = 500
     block_index = 0
     block_count = 0
     dictionary = {}
@@ -230,9 +235,7 @@ def read_data(reader):
             block_count = 0
         document_id = int(row['document_id'])
         content = row['content']
-        process_res = process_doc(content)
-        doc_dict = process_res[0]
-        doc_positions = process_res[1]
+        doc_dict, doc_positions, doc_length = process_doc(content)
         for word in doc_dict:
             if word not in dictionary:
                 dictionary[word] = []
@@ -243,7 +246,7 @@ def read_data(reader):
                 'positions': doc_positions[word]
             })
             doc_freq[word] += 1
-        doc_len[document_id] = process_res[2]
+        doc_len[document_id] = doc_length
         block_count += 1
     write_temp(doc_freq, dictionary, doc_len, block_index)
     return block_index + 1
