@@ -67,6 +67,16 @@ each block is 500.
 
 2. Parsing queries
 
+2.1 Query Refinement Techniques
+
+2.1.1 Query Extension
+NLTK's English WordNet is used for query extension. For every query term, words with similar
+meaning to this term is retrieved from the WordNet to form the new query. The new query consists
+both the original terms and the extended term, while the original terms having a higher weight.
+For now, the weight of original and extended terms are differentiated by adjusting the term
+frequency. The extended terms' term frequency is set to be 1, and to make the difference more
+obvious, the tf of original terms are set to be (1 + the actual tf) * 2.
+
 
 3. Searching and ranking
 
@@ -139,6 +149,12 @@ https://stackoverflow.com/questions/22520932/python-remove-all-non-alphabet-char
 
 NLTK API:
 https://www.nltk.org/api/nltk.html
+
+NLTK similar function:
+https://www.nltk.org/book/ch01.html
+
+NLTK WordNet:
+https://www.nltk.org/book/ch02.html
 
 Python API:
 https://docs.python.org/3/library/

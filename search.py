@@ -117,7 +117,7 @@ def query_extension(query_dict):
 
     final_query = {}
     for term in query_dict:
-        final_query[term] = 2 * query_dict[term]
+        final_query[term] = 2 * (query_dict[term] + 1)
     for term in extension_words:
         final_query[term] = extension_words[term]
     return final_query
