@@ -3,6 +3,7 @@ import getopt
 import sys
 import math
 from heapq import *
+from nltk.corpus import wordnet as wn
 
 # Global variables
 from file_io import load_dict, read_doc_id, read_float_bin_file, read_tf, read_position_pointer, read_positional_index
@@ -59,7 +60,9 @@ def run_search(dict_file, postings_file, queries_file, results_file):
 
     # Perform search
     query = qf.readline()
-    res = process_free_query(query)
+    # the most 10 relevant result by Cosine similarity is stored in res
+    query_dict = get_query_dict(query)
+    res = process_free_query(query_extension(query_dict))
     if not res:
         rf.write('\n')
     rf.write(str(res[0]))
@@ -96,16 +99,50 @@ def weight_doc(term_freq):
     return 1 + math.log(term_freq, 10)
 
 
-def process_free_query(query):
+def query_extension(query_dict):
     """
-    Process a free query
-    :param query: the free query given
-    :return: most relevant 10 documents as a list in descending order of relevance
+    Using nltk's WordNet to include words with similar meanings in query
+    :param query_dict: a dictionary with query term as key and term
+    frequency as value
+    :return: another dictionary with query term(including extended terms)
+    as key and the default term frequency as value(original terms' tf are
+    doubled to increase their weight in searching)
     """
+    extension_words = {}
+    for term in query_dict:
+        for synset in wn.synsets(term):
+            for word in synset.lemma_names():
+                if word not in query_dict:
+                    extension_words[word] = 1
 
+    final_query = {}
+    for term in query_dict:
+        final_query[term] = 2 * query_dict[term]
+    for term in extension_words:
+        final_query[term] = extension_words[term]
+    return final_query
+
+
+def get_query_dict(query):
+    """
+    tokenize the input query and return a dictionary with term as key and
+    term frequency as value
+    :param query: original query
+    :return: a dictionary with query term as key and term frequency as value
+    """
     res = []
     query_info = process_doc(query)
     query_dict = query_info[0]
+    return query_dict
+
+
+def process_free_query(query_dict):
+    """
+    Process a free query
+    :param query_dict: a dictionary with query term as key and term frequency as value
+    :return: most relevant 10 documents as a list in descending order of relevance
+    """
+    res = []
     # Initialize scores of each document to 0
     scores = {}
     for doc in doc_len:
@@ -177,14 +214,6 @@ def read_posting(word, index):
     tf = read_tf(pf)
     ptr = read_position_pointer(pf)
     return id, tf, ptr
-
-
-
-
-
-
-
-
 
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None
