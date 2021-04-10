@@ -182,6 +182,23 @@ def process_free_query(query_dict):
             res_docs.append(-doc[1])
     res_docs.reverse()
     return res_docs
+    # print(dictionary['10'])
+    # print('here', read_posting('10', 1))
+    # print('there', read_position('10', 1, 1))
+    # print(doc_len[8891473])
+    """
+    for i in range(35):
+        lf = open(f'lengths{i}.txt', 'rb')
+        while True:
+            doc = read_doc_id(lf)
+            length = read_float_bin_file(lf)
+            if not length:
+                break
+            if doc < 8891473:
+                print(length, doc, i)
+            print(length, doc, i)
+        lf.close()
+    """
 
 
 def read_position(word, doc_index, index):
