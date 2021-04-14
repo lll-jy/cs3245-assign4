@@ -67,6 +67,16 @@ each block is 500.
 
 2. Parsing queries
 
+2.1 Query Refinement Techniques
+
+2.1.1 Query Extension
+NLTK's English WordNet is used for query extension. For every query term, words with similar
+meaning to this term is retrieved from the WordNet to form the new query. The new query consists
+both the original terms and the extended term, while the original terms having a higher weight.
+For now, the weight of original and extended terms are differentiated by adjusting the term
+frequency. The extended terms' term frequency is set to be 1, and to make the difference more
+obvious, the tf of original terms are set to be (1 + the actual tf) * 2.
+
 
 3. Searching and ranking
 
@@ -77,6 +87,24 @@ to memory at this stage is the full dictionary, including terms and their corres
 document frequencies and postings pointers. In addition, the two base pointers stored at the
 top of the dictionary file, and the vector lengths of all documents are also processed and
 loaded to memory.
+
+3.2 Basic ranking scheme
+
+Similar to HW3, lnc.ltc is used to calculate the cosine similarity between the query and each
+document.
+
+The algorithm to calculate cosign scores is derived from the one given in
+the lecture notes. Vectors for queries are actually not normalized to a unit
+vector because this is a shared coefficient for all cosine scores, and thus
+it makes no difference in the ranking of score.
+
+Terms in the query that does not appear in the dictionary will not have effect
+on the scores of documents. Omitting such terms in the calculation of score
+makes sense because, firstly, the result of log-frequency of the term in any
+document would be 0 makes the weight of term in any document 0; and, secondly,
+actual document frequency is 0, and thus makes idf, and hence weight of term
+in the query, undefined as the denominator is 0.
+
 
 == Files included with this submission ==
 
@@ -121,6 +149,12 @@ https://stackoverflow.com/questions/22520932/python-remove-all-non-alphabet-char
 
 NLTK API:
 https://www.nltk.org/api/nltk.html
+
+NLTK similar function:
+https://www.nltk.org/book/ch01.html
+
+NLTK WordNet:
+https://www.nltk.org/book/ch02.html
 
 Python API:
 https://docs.python.org/3/library/
