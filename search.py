@@ -232,31 +232,29 @@ def read_posting(word, index):
     return id, tf, ptr
 
 
-def get_list_for_single_word_appearance(word):
-    """
-    Gets the list for a single word of single appearance
-    :param word: the word to search
-    :return: the list of documents that contain this word
-    """
-    res = []
-    pf.seek(postings_base_pointer + dictionary[word]['ptr'])
-    for _ in range(dictionary[word]['df']):
-        res.append(read_doc_id(pf))
-        read_tf(pf)
-        read_position_pointer(pf)
-    return res
-
-
-def get_list_for_word(word, pos):
+def get_list_for_word(word, pos, details):
     """
     Gets the list for a single word with its corresponding relevant positions
     :param word: the word to search
     :param pos: the positions wanted
-    :return: the list of documents that contain this word in the wanted positions
+    :param details: true if detailed positions also need to be returned
+    :return: the list of documents that contain this word in the wanted positions, and the corresponding list of
+    positions if needed
     """
-    if len(pos) == 1:
-        return get_list_for_single_word_appearance(word)
     res = []
+    res_pos = []
+    if len(pos) == 1:
+        pf.seek(postings_base_pointer + dictionary[word]['ptr'])
+        for _ in range(dictionary[word]['df']):
+            res.append(read_doc_id(pf))
+            tf = read_tf(pf)
+            pp = read_position_pointer(pf)
+            if details:
+                this_pos = []
+                pf.seek(pp)
+                for _ in range(tf):
+                    this_pos.append(read_positional_index(pf))
+                res_pos.append(this_pos)
     pf.seek(postings_base_pointer + dictionary[word]['ptr'])
     for _ in range(dictionary[word]['df']):
         doc_id = read_doc_id(pf)
@@ -271,18 +269,26 @@ def get_list_for_word(word, pos):
         for _ in range(len(pos)):
             current_positions.put(read_positional_index(pos_reader))
         is_valid = False
-        if is_isomorphic(list(current_positions.queue), pos):
+        this_pos = []
+        pos_list = list(current_positions.queue)
+        if is_isomorphic(pos_list, pos):
             is_valid = True
-        while not is_valid and t_id < tf:
+            this_pos.append(pos_list[0])
+        while t_id < tf:
+            if is_valid and not details:
+                break
             current_positions.get()
             current_positions.put(read_positional_index(pos_reader))
             t_id += 1
-            if is_isomorphic(list(current_positions.queue), pos):
+            pos_list = list(current_positions.queue)
+            if is_isomorphic(pos_list, pos):
                 is_valid = True
+                this_pos.append(pos_list[0])
         if is_valid:
             res.append(doc_id)
+            res_pos.append(this_pos)
         pos_reader.close()
-    return res
+    return res, res_pos
 
 
 def is_isomorphic(l1, l2):
@@ -298,7 +304,7 @@ def is_isomorphic(l1, l2):
         return False
     diff = l1[0] - l2[0]
     for i in range(1, size):
-        if l1[0] - l2[0] != diff:
+        if l1[i] - l2[i] != diff:
             return False
     return True
 
@@ -411,7 +417,7 @@ def process_phrasal_search(text):
     if count == 1:
         if words[0] not in dictionary:
             return []
-        return get_list_for_word(words[0], pos[words[0]])
+        return get_list_for_word(words[0], pos[words[0]], False)[0]
     if count == 2:
         has_duplicates = None
         for word in words:
@@ -422,7 +428,7 @@ def process_phrasal_search(text):
         if not has_duplicates:
             return intersect_words(words[0], words[1], [pos[words[0]][0], pos[words[1]][0]])
         else:
-            list_of_duplicated = get_list_for_word(has_duplicates, pos[has_duplicates])
+            list_of_duplicated, duplicated_positions = get_list_for_word(has_duplicates, pos[has_duplicates], True)
             # intersect (the other word, lod)
     return res
 
