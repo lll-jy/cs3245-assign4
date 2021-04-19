@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import getopt
+import queue
 import sys
 import math
 from heapq import *
@@ -53,6 +54,16 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     # Perform search
     query = qf.readline()
     res = process_phrasal_search(query)
+    """
+    res = [1]
+    for i in range(103310, 103315):
+        print('END')
+        id, tf, _ = read_posting('match', i)
+        print(id)
+        if id == 2522215:
+            for j in range(min(20, tf)):
+                print(read_position('match', i, j))
+    """
     # the most 10 relevant result by Cosine similarity is stored in res
     # query_dict = get_query_dict(query)
     # res = process_free_query(query_extension(query_dict))
@@ -221,11 +232,146 @@ def read_posting(word, index):
     return id, tf, ptr
 
 
+def get_list_for_single_word_appearance(word):
+    """
+    Gets the list for a single word of single appearance
+    :param word: the word to search
+    :return: the list of documents that contain this word
+    """
+    res = []
+    pf.seek(postings_base_pointer + dictionary[word]['ptr'])
+    for _ in range(dictionary[word]['df']):
+        res.append(read_doc_id(pf))
+        read_tf(pf)
+        read_position_pointer(pf)
+    return res
+
+
+def get_list_for_word(word, pos):
+    """
+    Gets the list for a single word with its corresponding relevant positions
+    :param word: the word to search
+    :param pos: the positions wanted
+    :return: the list of documents that contain this word in the wanted positions
+    """
+    if len(pos) == 1:
+        return get_list_for_single_word_appearance(word)
+    res = []
+    pf.seek(postings_base_pointer + dictionary[word]['ptr'])
+    for _ in range(dictionary[word]['df']):
+        doc_id = read_doc_id(pf)
+        tf = read_tf(pf)
+        pos_ptr = read_position_pointer(pf)
+        if tf < len(pos):
+            continue
+        pos_reader = open(postings_file, 'rb')
+        pos_reader.seek(pos_ptr)
+        current_positions = queue.Queue()
+        t_id = len(pos)  # term id of next to inspect
+        for _ in range(len(pos)):
+            current_positions.put(read_positional_index(pos_reader))
+        is_valid = False
+        if is_isomorphic(list(current_positions.queue), pos):
+            is_valid = True
+        while not is_valid and t_id < tf:
+            current_positions.get()
+            current_positions.put(read_positional_index(pos_reader))
+            t_id += 1
+            if is_isomorphic(list(current_positions.queue), pos):
+                is_valid = True
+        if is_valid:
+            res.append(doc_id)
+        pos_reader.close()
+    return res
+
+
+def is_isomorphic(l1, l2):
+    """
+    Checks whether the two lists of positions are isomorphic in terms of relative positions, with both lists assumed to
+    be non-empty
+    :param l1: the first list of positions
+    :param l2: the second list of positions
+    :return: true if the two lists are isomorphic, e.g. [2, 4] and [1, 3]
+    """
+    size = len(l1)
+    if len(l2) != size:
+        return False
+    diff = l1[0] - l2[0]
+    for i in range(1, size):
+        if l1[0] - l2[0] != diff:
+            return False
+    return True
+
+
+def intersect_words(w1, w2, pos):
+    """
+    Gets the list of simple intersection of the two given words
+    :param w1: the first word to search for
+    :param w2: the second word to search for
+    :param pos: the relative positions of w1 and w2
+    :return: the list of documents that contain the two words in the wanted relative positions
+    """
+    res = []
+    # [w1, w2] for the following
+    doc_reader = [open(postings_file, 'rb'), open(postings_file, 'rb')]
+    positions = [0, 0]
+    doc_reader[0].seek(postings_base_pointer + dictionary[w1]['ptr'])
+    doc_reader[1].seek(postings_base_pointer + dictionary[w2]['ptr'])
+    doc_id = [read_doc_id(doc_reader[0]), read_doc_id(doc_reader[1])]
+    doc_count = [1, 1]  # count = next index to inspect
+    pos_count = [0, 0]
+    doc_freq = [dictionary[w1]['df'], dictionary[w2]['df']]
+
+    while doc_count[0] <= doc_freq[0] and doc_count[1] <= doc_freq[1]:
+        if doc_id[0] == doc_id[1]:
+            print(1)
+            # handle positions
+        else:
+            smaller_index = 0
+            if doc_id[0] > doc_id[1]:
+                smaller_index = 1
+            other_index = 1 - smaller_index
+
+    doc_reader[0].close()
+    doc_reader[1].close()
+    return res
+
+
 def process_phrasal_search(text):
     """
     Implement phrasal search given the phrase
+    :param text: the phrase before tokenization and normalization to search, the number of words is 1, 2, or 3
+    :return: the list of relevant documents ranked by relevance (doc ID are subtracted by minimal index)
+    """
+    # Initialize information needed
+    tf, pos, _ = process_doc(text)
+    res = []
+    words = list(iter(tf))
+    count = len(words)
+    if count == 1:
+        if words[0] not in dictionary:
+            return []
+        return get_list_for_word(words[0], pos[words[0]])
+    if count == 2:
+        has_duplicates = None
+        for word in words:
+            if word not in dictionary:
+                return []
+            if tf[word] > 1:
+                has_duplicates = word
+        if not has_duplicates:
+            return intersect_words(words[0], words[1], [pos[words[0]][0], pos[words[1]][0]])
+        else:
+            list_of_duplicated = get_list_for_word(has_duplicates, pos[has_duplicates])
+            # intersect (the other word, lod)
+    return res
+
+
+def process_phrasal_search1(text):
+    """
+    Implement phrasal search given the phrase
     :param text: the phrase before tokenization and normalization to search
-    :return: the list of relevant documents ranked by relevance
+    :return: the list of relevant documents ranked by relevance (doc ID are subtracted by minimal index)
     """
     # Initialize information needed
     tf, pos, length = process_doc(text)
@@ -238,7 +384,6 @@ def process_phrasal_search(text):
     position_indices = {}  # Position pointer positions
     positions = {}  # Position ID
     final_pointer_position = {}
-    # doc_heap = []
     valid_list = []
     first_word = None
     for word in pos:
@@ -258,7 +403,6 @@ def process_phrasal_search(text):
         position_indices[word] = 0
         positions[word] = 0
         final_pointer_position[word] = 0
-        # heappush(doc_heap, (read_doc_id(doc_pointers[word]), read_tf(), read_position_pointer(), word))
     # Process
     flag = True
     while flag:
@@ -268,11 +412,13 @@ def process_phrasal_search(text):
             if word == first_word:
                 continue
             d_id, _, _ = doc_content[word]
+            if 2522100 < doc_id <= 2522215:
+                print(doc_id, d_id, word)
             if d_id == doc_id:
                 continue
             elif d_id > doc_id:
                 found = get_next_doc_id(first_word, d_id, indices, doc_pointers, doc_content, skips[first_word],
-                                final_doc_position[first_word])
+                                        final_doc_position[first_word])
                 if not found:
                     is_valid = False
                     if indices[first_word] >= final_doc_position[first_word]:
@@ -284,32 +430,63 @@ def process_phrasal_search(text):
                     is_valid = False
                     if indices[word] >= final_doc_position[word]:
                         flag = False
+            if doc_id == 2522215:
+                print(doc_content)
         if not is_valid:
             continue
-        # Check position
+        # Check position - different words
         for word in position_pointers:
             _, term_freq, position_indices[word] = doc_content[word]
             position_pointers[word].seek(position_indices[word])
-            positions[word] = read_positional_index(position_pointers[word])
+            positions[word] = read_positional_index(position_pointers[word]) - pos[word][0]
             final_pointer_position[word] = position_indices[word] + term_freq * pos_byte_width
-        pos_id = positions[first_word] - pos[first_word]
-        for word in positions:
-            if word == first_word:
-                continue
-            p_id = positions[word] - pos[word]
-            if p_id == pos_id:
-                continue
-            elif p_id > pos_id:
-                _, term_freq, _ = doc_content[word]
-                found = get_next_pos_id(first_word, p_id, position_indices, position_pointers, positions,
-                                        math.floor(math.sqrt(term_freq)), final_pointer_position[first_word],
-                                        pos[first_word])
-        """
-        pf.seek(ptr + pos_byte_width * index)
-        return read_positional_index(pf)
-        """
-        valid_list.append(doc_id)
-        # Update all
+        inner_flag = True
+        if doc_id == 2522215:
+            print('before', doc_content)
+        # if 2885547 - 246391 <= doc_id < 2885560 - 246391:
+            # print(doc_id, is_valid)
+            # print(positions)
+        while inner_flag:
+            # if 2885547 - 246391 <= doc_id < 2885560 - 246391:
+            # if doc_id == 2522215:
+            #     print(positions)
+            pos_id = positions[first_word]
+            for word in positions:
+                if word == first_word:
+                    continue
+                p_id = positions[word]
+                if p_id == pos_id:
+                    continue
+                to_process = first_word
+                target_id = p_id
+                if p_id < pos_id:
+                    to_process = word
+                    target_id = pos_id
+                _, term_freq, _ = doc_content[to_process]
+                found = get_next_pos_id(to_process, target_id, position_indices, position_pointers, positions,
+                                        math.floor(math.sqrt(term_freq)), final_pointer_position[to_process],
+                                        pos[to_process][0])
+                if not found:
+                    is_valid = False
+                    if position_indices[to_process] >= final_pointer_position[to_process]:
+                        inner_flag = False
+                        break
+            if is_valid:
+                break
+        # if 2885547 - 246391 <= doc_id < 2885560 - 246391:
+        #     print(doc_id, is_valid)
+        # print(doc_content)
+        #     print(positions)
+        if is_valid:
+            valid_list.append(doc_id)
+        for word in pos:
+            indices[word] += doc_byte_width
+            doc_content[word] = (read_doc_id(doc_pointers[word]), read_tf(doc_pointers[word]),
+                                 read_position_pointer(doc_pointers[word]))
+        if doc_id == 2522215:
+            print('after', doc_content)
+            print('end of loop')
+    print(valid_list)
     for word in doc_pointers:
         doc_pointers[word].close()
     for word in position_pointers:
@@ -335,7 +512,7 @@ def get_next_doc_id(word, target, idx, ptr, ctnt, skip, final):  # True if word 
         if doc_id == target:
             idx[word] += skip
             ctnt[word] = (doc_id, read_tf(pf), read_position_pointer(pf))
-            ptr[word].seek(idx[word])
+            ptr[word].seek(idx[word] + doc_byte_width)
             return True
         elif doc_id < target:
             idx[word] += skip
@@ -367,29 +544,26 @@ def get_next_pos_id(word, target, idx, ptr, positions, skip, final, offset):  # 
     :param offset: the position offset of the word
     :return: True if the target ID is found for the word
     """
-    if idx[word] + skip * pos_byte_width < final:
-        pf.seek(idx[word] + skip * pos_byte_width)
+    skip_pointer = skip * pos_byte_width
+    if idx[word] + skip_pointer < final:
+        pf.seek(idx[word] + skip_pointer)
         pos_id = read_positional_index(pf) - offset
         if pos_id == target:
-            idx[word] += skip * pos_byte_width
+            idx[word] += skip_pointer
             positions[word] = pos_id
-            ptr[word].seek(idx[word])
+            ptr[word].seek(idx[word] + pos_byte_width)
             return True
         elif pos_id < target:
-            idx[word] += skip
-            return get_next_doc_id(word, target, idx, ptr, positions, skip, final)
-    bound = int(skip / doc_byte_width)
-    for _ in range(bound + 1):
-        idx[word] += doc_byte_width
+            idx[word] += skip_pointer
+            return get_next_pos_id(word, target, idx, ptr, positions, skip, final, offset)
+    for _ in range(skip + 1):
+        idx[word] += pos_byte_width
         if idx[word] >= final:
             return False
-        pos_id = read_doc_id(ptr[word])
+        pos_id = read_positional_index(ptr[word]) - offset
         if pos_id >= target:
-            positions[word] = (pos_id, read_tf(ptr[word]), read_position_pointer(ptr[word]))
+            positions[word] = pos_id
             return pos_id == target
-        else:
-            read_tf(ptr[word])
-            read_position_pointer(ptr[word])
 
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None
