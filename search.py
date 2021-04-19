@@ -309,15 +309,18 @@ def is_isomorphic(l1, l2):
     return True
 
 
-def intersect_words(w1, w2, pos):
+def intersect_words(w1, w2, pos, details):
     """
     Gets the list of simple intersection of the two given words
     :param w1: the first word to search for
     :param w2: the second word to search for
     :param pos: the relative positions of w1 and w2
-    :return: the list of documents that contain the two words in the wanted relative positions
+    :param details: true if the details of positions of each phrase needed is needed to be returned
+    :return: the list of documents that contain the two words in the wanted relative positions, and the corresponding
+    list of lists of positions if needed
     """
     res = []
+    res_pos = []
     # [w1, w2] for the following
     w = [w1, w2]
     doc_reader = [open(postings_file, 'rb'), open(postings_file, 'rb')]
@@ -337,11 +340,12 @@ def intersect_words(w1, w2, pos):
             if doc_id[0] > doc_id[1]:
                 smaller_index = 1
             other_index = 1 - smaller_index
-            while doc_count[smaller_index] + skip_width[smaller_index] < doc_freq[smaller_index]:
-                d_id, _, _ = read_posting(w[smaller_index], doc_count[smaller_index] + skip_width[smaller_index])
-                if d_id > doc_id[other_index]:
-                    break
-                doc_count[smaller_index] += skip_width[smaller_index]
+            if skip_width[smaller_index] > 0:
+                while doc_count[smaller_index] + skip_width[smaller_index] < doc_freq[smaller_index]:
+                    d_id, _, _ = read_posting(w[smaller_index], doc_count[smaller_index] + skip_width[smaller_index])
+                    if d_id > doc_id[other_index]:
+                        break
+                    doc_count[smaller_index] += skip_width[smaller_index]
             doc_reader[smaller_index].seek(base_pointer[smaller_index] + doc_byte_width
                                            * (doc_count[smaller_index] - 1))
             for _ in range(skip_width[smaller_index]):
@@ -366,31 +370,38 @@ def intersect_words(w1, w2, pos):
             skip_pos_width = [math.floor(math.sqrt(term_freq[0])), math.floor(math.sqrt(term_freq[1]))]
             pos_count = [1, 1]
             found2 = (position[1] - position[0] == diff[0])
-            while pos_count[0] <= term_freq[0] and pos_count[1] <= term_freq[1] and not found2:
-                if position[1] - position[0] != diff[0]:
-                    smaller_index = 0
-                    if position[1] - position[0] < diff[0]:
-                        smaller_index = 1
-                    other_index = 1 - smaller_index
+            this_pos = []
+            if found2:
+                this_pos.append(doc_id[0])
+            while pos_count[0] <= term_freq[0] and pos_count[1] <= term_freq[1] and (details or not found2):
+                smaller_index = 0
+                if position[1] - position[0] < diff[0]:
+                    smaller_index = 1
+                other_index = 1 - smaller_index
+                if skip_pos_width[smaller_index] > 0:
                     while pos_count[smaller_index] + skip_pos_width[smaller_index] < term_freq[smaller_index]:
                         p_id = read_position(w[smaller_index], doc_count[smaller_index],
                                              pos_count[smaller_index] + skip_pos_width[smaller_index])
                         if position[other_index] - p_id < diff[smaller_index]:
                             break
                         pos_count[smaller_index] += skip_pos_width[smaller_index]
-                    pos_reader[smaller_index].seek(pos_pointer[smaller_index]
-                                                   + pos_byte_width * (pos_count[smaller_index] - 1))
-                    for _ in range(skip_pos_width[smaller_index]):
-                        p_id = read_positional_index(pos_reader[smaller_index])
-                        pos_count[smaller_index] += 1
-                        if position[other_index] - p_id <= diff[smaller_index]:
-                            found2 = position[other_index] - p_id == diff[smaller_index]
-                            position[smaller_index] = p_id
-                            break
-                        if pos_count[smaller_index] >= term_freq[smaller_index]:
-                            break
+                pos_reader[smaller_index].seek(pos_pointer[smaller_index]
+                                               + pos_byte_width * (pos_count[smaller_index] - 1))
+                for _ in range(skip_pos_width[smaller_index]):
+                    p_id = read_positional_index(pos_reader[smaller_index])
+                    pos_count[smaller_index] += 1
+                    if position[other_index] - p_id <= diff[smaller_index]:
+                        matches = position[other_index] - p_id == diff[smaller_index]
+                        found2 = matches or found2
+                        position[smaller_index] = p_id
+                        if matches:
+                            this_pos.append(position[0])
+                        break
+                    if pos_count[smaller_index] >= term_freq[smaller_index]:
+                        break
             if found2:
                 res.append(doc_id[0])
+                res_pos.append(this_pos)
             pos_reader[0].close()
             pos_reader[1].close()
             for i in range(1):
@@ -400,7 +411,9 @@ def intersect_words(w1, w2, pos):
                 doc_count[i] += 1
     doc_reader[0].close()
     doc_reader[1].close()
-    return res
+    print(res)
+    print(res_pos)
+    return res, res_pos
 
 
 def process_phrasal_search(text):
@@ -426,7 +439,7 @@ def process_phrasal_search(text):
             if tf[word] > 1:
                 has_duplicates = word
         if not has_duplicates:
-            return intersect_words(words[0], words[1], [pos[words[0]][0], pos[words[1]][0]])
+            return intersect_words(words[0], words[1], [pos[words[0]][0], pos[words[1]][0]], True)
         else:
             list_of_duplicated, duplicated_positions = get_list_for_word(has_duplicates, pos[has_duplicates], True)
             # intersect (the other word, lod)
