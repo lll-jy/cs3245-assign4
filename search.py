@@ -7,7 +7,7 @@ from nltk.corpus import wordnet as wn
 
 # Global variables
 from file_io import load_dict, read_doc_id, read_float_bin_file, read_tf, read_position_pointer, read_positional_index
-from widths import doc_width, smallest_doc_id, doc_byte_width, pos_byte_width, number_of_doc_used_in_relevance_feedback
+from widths import doc_width, smallest_doc_id, doc_byte_width, pos_byte_width, number_of_doc_returned
 from normalize import process_doc
 
 pf = None
@@ -65,10 +65,10 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     res = process_free_query(query_extension(query_dict))
     if not res:
         rf.write('\n')
-    rf.write(str(res[0]))
+    rf.write(str(res[0] + smallest_doc_id))
     for doc_id in res[1:]:
         rf.write(' ')
-        rf.write(str(doc_id))
+        rf.write(str(doc_id + smallest_doc_id))
     rf.write('\n')
 
     # Close files
@@ -169,7 +169,7 @@ def process_free_query(query_dict):
     for doc in scores:
         if doc_len[doc] != 0:
             scores[doc] /= doc_len[doc]
-        if len(res) < number_of_doc_used_in_relevance_feedback:
+        if len(res) < number_of_doc_returned:
             heappush(res, (scores[doc], -doc))
         else:
             if res[0] < (scores[doc], -doc):
