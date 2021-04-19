@@ -411,8 +411,6 @@ def intersect_words(w1, w2, pos, details):
                 doc_count[i] += 1
     doc_reader[0].close()
     doc_reader[1].close()
-    print(res)
-    print(res_pos)
     return res, res_pos
 
 
@@ -536,7 +534,6 @@ def intersect_word_list(word, docs, pos_lst, pos, details):
                             break
                         if pos_count[1] >= term_freq[1]:
                             break
-            print(found2, doc_id[0])
             if found2:
                 res.append(doc_id[0])
                 res_pos.append(this_pos)
@@ -549,8 +546,6 @@ def intersect_word_list(word, docs, pos_lst, pos, details):
             term_freq[1] = len(pos_lst[doc_count[1]])
             doc_count[1] += 1
     doc_reader.close()
-    print(res)
-    print(res_pos)
     return res, res_pos
 
 
@@ -558,7 +553,24 @@ def process_phrasal_search(text):
     """
     Implement phrasal search given the phrase
     :param text: the phrase before tokenization and normalization to search, the number of words is 1, 2, or 3
-    :return: the list of relevant documents ranked by relevance (doc ID are subtracted by minimal index)
+    :return: the list of documents ranked by relevance
+    """
+    lst = get_phrasal_search_list(text)
+    score_heap = []
+    query_dict, _, _ = process_doc(text)
+    scores = process_free_query(query_dict)
+    for d in lst:
+        heappush(score_heap, (scores[d], d))
+    res = list(map(lambda x: x[1], scores))
+    print(res)
+    return res
+
+
+def get_phrasal_search_list(text):
+    """
+    Implement phrasal search given the phrase, unordered
+    :param text: the phrase before tokenization and normalization to search, the number of words is 1, 2, or 3
+    :return: the list of relevant documents
     """
     # Initialize information needed
     tf, pos, _ = process_doc(text)
