@@ -147,17 +147,12 @@ def process_query(query):
     """
     if query[0] == "\"":
         query = query.strip("\"")
-        return process_phrase_query(query)
+        return process_phrasal_search(query)
     else:
         query_dict = get_query_dict(query)
         # Query extension is used for free text query
         res = process_free_query(query_extension(query_dict))
         return res
-
-
-def process_phrase_query(query):
-    # TODO: phrase query
-    return 0
 
 
 def weight_query(doc_freq, term_freq):
