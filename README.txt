@@ -67,9 +67,22 @@ each block is 500.
 
 2. Parsing queries
 
-2.1 Query Refinement Techniques
+2.1 Handling AND
+The input query is split by the key word 'AND'. To compute a final ranking, each part of
+the queries after splitting is firstly ranked individually, producing a list of scores by
+applying tf-idf and cosine similarity, as described in Section 3.
+The scores for documents in each ranking are then combined by calculating their harmonic
+average.
+For example, if a document has a score a in query A, and a score b in query B. Then its
+harmonic average score is compute as 2ab/(a+b).
+This average number is chosen because it can balance each side and give final ranking that is
+more balanced for each and every query.
 
-2.1.1 Query Extension
+
+2.2 Query Refinement Techniques
+query refinement techniques are used to improve the recall of free text searching
+
+2.2.1 Query Extension
 NLTK's English WordNet is used for query extension. For every query term, words with similar
 meaning to this term is retrieved from the WordNet to form the new query. The new query consists
 both the original terms and the extended term, while the original terms having a higher weight.
@@ -167,3 +180,6 @@ https://stackoverflow.com/questions/15063936/csv-error-field-larger-than-field-l
 
 Roman numeral regex:
 https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch06s09.html
+
+Harmonic Mean Wikipedia:
+https://en.wikipedia.org/wiki/Harmonic_mean
