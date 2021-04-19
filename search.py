@@ -59,14 +59,26 @@ def run_search(dict_file, postings_file, queries_file, results_file):
         doc_len[doc] = length[0]
 
     # Perform search
-    query = qf.readline()
-    # the most 10 relevant result by Cosine similarity is stored in res
-    query_dict = get_query_dict(query)
-    res = process_free_query(query_extension(query_dict))
-    if not res:
+    query_input = qf.readline()
+    # split query by 'AND'
+    res = query_input.split('AND')
+    queries = []
+    for part in res:
+        queries.append(part.strip())
+
+    result_lists = []
+    for query in queries:
+        res = process_query(query)
+        result_lists.append(res)
+
+    final_score = compute_harmonic_scores(result_lists)
+
+    result = select_first_k(final_score, 10)
+
+    if not result:
         rf.write('\n')
-    rf.write(str(res[0] + smallest_doc_id))
-    for doc_id in res[1:]:
+    rf.write(str(result[0] + smallest_doc_id))
+    for doc_id in result[1:]:
         rf.write(' ')
         rf.write(str(doc_id + smallest_doc_id))
     rf.write('\n')
@@ -76,6 +88,83 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     df.close()
     qf.close()
     rf.close()
+
+
+def compute_harmonic_scores(result_lists):
+    """
+    Compute a harmonic average score for each document with respect to multiple
+    queries in query contains 'AND'
+    :param result_lists: a list of dictionaries of scores
+    :return: a dictionary of the harmonic average scores for each document
+    """
+    final_score = {}
+    if len(result_lists) == 1:
+        final_score = result_lists[0]
+    else:
+        num_of_lists = len(result_lists)
+        for document in result_lists[0]:
+            acc = 0
+            for number in range(1, num_of_lists):
+                if document not in result_lists[number] or result_lists[number][document] == 0:
+                    final_score[document] = 0
+                    break
+                else:
+                    acc += 1 / result_lists[number][document]
+            # Store the harmonic average of each document's scores for different queries
+            if acc == 0:
+                final_score[document] = 0
+            else:
+                final_score[document] = num_of_lists / acc
+    return final_score
+
+
+def select_first_k(scores, k):
+    """
+    Select the first k documents with the highest score
+    :param k: number of documents returned
+    :param scores: a dictionary of document scores
+    :return: a list of k document ids
+    """
+    res = []
+    for doc in scores:
+        # Square the scores to make the difference in weight more obvious
+        scores[doc] *= scores[doc]
+        if len(res) < k:
+            heappush(res, (scores[doc], -doc))
+        else:
+            if res[0] < (scores[doc], -doc):
+                heappop(res)
+                heappush(res, (scores[doc], -doc))
+    res_docs = []
+    while res:
+        doc = heappop(res)
+        if doc[0] > 0:
+            res_docs.append(-doc[1])
+    res_docs.reverse()
+    return res_docs
+
+
+def process_query(query):
+    """
+    Determine whether a query is a phrase query or a normal one, and handle
+    them accordingly
+    :param query: a query string
+    :return: a dictionary of scores of documents with respect to their relevance
+    for the given query
+    """
+    if query[0] == "\"":
+        query = query.strip("\"")
+        return process_phrase_query(query)
+    else:
+        query_dict = get_query_dict(query)
+        # Query extension is used for free text query
+        res = process_free_query(query_extension(query_dict))
+        return res
+
+
+def process_phrase_query(query):
+    # TODO: phrase query
+    return 0
 
 
 def weight_query(doc_freq, term_freq):
@@ -140,9 +229,8 @@ def process_free_query(query_dict):
     """
     Process a free query
     :param query_dict: a dictionary with query term as key and term frequency as value
-    :return: most relevant 10 documents as a list in descending order of relevance
+    :return: a dictionary with scores of the documents
     """
-    res = []
     # Initialize scores of each document to 0
     scores = {}
     for doc in doc_len:
@@ -166,39 +254,9 @@ def process_free_query(query_dict):
                 continue
             scores[doc_id] += weight_doc(tf) * qw
             doc_count += 1
-    for doc in scores:
         if doc_len[doc] != 0:
             scores[doc] /= doc_len[doc]
-        if len(res) < number_of_doc_returned:
-            heappush(res, (scores[doc], -doc))
-        else:
-            if res[0] < (scores[doc], -doc):
-                heappop(res)
-                heappush(res, (scores[doc], -doc))
-    res_docs = []
-    while res:
-        doc = heappop(res)
-        if doc[0] > 0:
-            res_docs.append(-doc[1])
-    res_docs.reverse()
-    return res_docs
-    # print(dictionary['10'])
-    # print('here', read_posting('10', 1))
-    # print('there', read_position('10', 1, 1))
-    # print(doc_len[8891473])
-    """
-    for i in range(35):
-        lf = open(f'lengths{i}.txt', 'rb')
-        while True:
-            doc = read_doc_id(lf)
-            length = read_float_bin_file(lf)
-            if not length:
-                break
-            if doc < 8891473:
-                print(length, doc, i)
-            print(length, doc, i)
-        lf.close()
-    """
+        return scores
 
 
 def read_position(word, doc_index, index):
