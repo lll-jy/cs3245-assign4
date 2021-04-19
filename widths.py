@@ -12,4 +12,4 @@ doc_byte_width = post_byte_width + tf_byte_width + pos_pointer_byte_width
 double_byte_width = 8
 
 smallest_doc_id = 246391
-number_of_doc_used_in_relevance_feedback = 10
+number_of_doc_returned = 100
