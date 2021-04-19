@@ -119,6 +119,14 @@ actual document frequency is 0, and thus makes idf, and hence weight of term
 in the query, undefined as the denominator is 0.
 
 
+3.3 Phrasal search
+Positional indexing is used for phrasal search, and only exact matches (after normalizing) of terms as well as
+positions will be returned, and the resulting list is ranked by cosing similarity. Phrasal search is restricted
+to 1-3 word/term phrases.
+
+Skip lists with sqrt(N) skip width is applied to both document IDs and positional IDs.
+
+
 == Files included with this submission ==
 
 index.py: required source code of indexing
