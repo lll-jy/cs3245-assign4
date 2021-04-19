@@ -585,7 +585,25 @@ def process_phrasal_search(text):
                 word = words[1]
             return intersect_word_list(word, list_of_duplicated, duplicated_positions,
                                        [pos[word][0], pos[has_duplicates][0]], False)[0]
-            # intersect (the other word, lod)
+    if count == 3:
+        most_frequent_word = words[0]
+        highest_frequency = dictionary[words[0]]['df']
+        freq1 = dictionary[words[1]]['df']
+        if freq1 > highest_frequency:
+            most_frequent_word = words[1]
+            highest_frequency = freq1
+        freq2 = dictionary[words[2]]['df']
+        if freq2 > highest_frequency:
+            most_frequent_word = words[2]
+            highest_frequency = freq2
+        first_words = []
+        for w in words:
+            if w != most_frequent_word:
+                first_words.append(w)
+        docs, poss = intersect_words(first_words[0], first_words[1],
+                                     [pos[first_words[0]][0], pos[first_words[1]][0]], True)
+        return intersect_word_list(most_frequent_word, docs, poss,
+                                   [pos[most_frequent_word][0], pos[first_words[0]][0]], False)[0]
     return res
 
 
