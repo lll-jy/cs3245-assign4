@@ -67,9 +67,9 @@ each block is 500.
 
 2. Parsing queries
 
-2.1 Query Refinement Techniques
+2.1 Query refinement techniques
 
-2.1.1 Query Extension
+2.1.1 Query extension
 NLTK's English WordNet is used for query extension. For every query term, words with similar
 meaning to this term is retrieved from the WordNet to form the new query. The new query consists
 both the original terms and the extended term, while the original terms having a higher weight.
@@ -104,6 +104,14 @@ makes sense because, firstly, the result of log-frequency of the term in any
 document would be 0 makes the weight of term in any document 0; and, secondly,
 actual document frequency is 0, and thus makes idf, and hence weight of term
 in the query, undefined as the denominator is 0.
+
+
+3.3 Phrasal search
+Positional indexing is used for phrasal search, and only exact matches (after normalizing) of terms as well as
+positions will be returned, and the resulting list is ranked by cosing similarity. Phrasal search is restricted
+to 1-3 word/term phrases.
+
+Skip lists with sqrt(N) skip width is applied to both document IDs and positional IDs.
 
 
 == Files included with this submission ==
