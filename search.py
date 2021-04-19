@@ -348,7 +348,7 @@ def intersect_words(w1, w2, pos, details):
                     doc_count[smaller_index] += skip_width[smaller_index]
             doc_reader[smaller_index].seek(base_pointer[smaller_index] + doc_byte_width
                                            * (doc_count[smaller_index] - 1))
-            for _ in range(skip_width[smaller_index]):
+            for _ in range(skip_width[smaller_index] + 1):
                 d_id = read_doc_id(doc_reader[smaller_index])
                 tf = read_tf(doc_reader[smaller_index])
                 pp = read_position_pointer(doc_reader[smaller_index])
@@ -372,7 +372,7 @@ def intersect_words(w1, w2, pos, details):
             found2 = (position[1] - position[0] == diff[0])
             this_pos = []
             if found2:
-                this_pos.append(doc_id[0])
+                this_pos.append(position[0])
             while pos_count[0] <= term_freq[0] and pos_count[1] <= term_freq[1] and (details or not found2):
                 smaller_index = 0
                 if position[1] - position[0] < diff[0]:
@@ -387,7 +387,7 @@ def intersect_words(w1, w2, pos, details):
                         pos_count[smaller_index] += skip_pos_width[smaller_index]
                 pos_reader[smaller_index].seek(pos_pointer[smaller_index]
                                                + pos_byte_width * (pos_count[smaller_index] - 1))
-                for _ in range(skip_pos_width[smaller_index]):
+                for _ in range(skip_pos_width[smaller_index] + 1):
                     p_id = read_positional_index(pos_reader[smaller_index])
                     pos_count[smaller_index] += 1
                     if position[other_index] - p_id <= diff[smaller_index]:
@@ -416,6 +416,144 @@ def intersect_words(w1, w2, pos, details):
     return res, res_pos
 
 
+def intersect_word_list(word, docs, pos_lst, pos, details):
+    """
+    Gets the list of simple intersection of the two given words
+    :param word: the word to search for
+    :param docs: the intermediate list of words
+    :param pos_lst: the intermediate list of position lists
+    :param pos: the relative positions of word and intermediate list
+    :param details: true if the details of positions of each phrase needed is needed to be returned
+    :return: the list of documents that contain the two words in the wanted relative positions, and the corresponding
+    list of lists of positions if needed
+    """
+    res = []
+    res_pos = []
+    # [w1, w2] for the following
+    doc_reader = open(postings_file, 'rb')
+    base_pointer = postings_base_pointer + dictionary[word]['ptr']
+    doc_reader.seek(base_pointer)
+    if not docs:
+        return [], []
+    doc_id = [read_doc_id(doc_reader), docs[0]]
+    term_freq = [read_tf(doc_reader), len(pos_lst[0])]
+    pos_pointer = read_position_pointer(doc_reader)
+    doc_count = [1, 1]  # count = next index to inspect
+    doc_freq = [dictionary[word]['df'], len(docs)]
+    docs.append(-1)
+    pos_lst.append([])
+    skip_width = [math.floor(math.sqrt(doc_freq[0])), math.floor(math.sqrt(doc_freq[1]))]
+    while doc_count[0] <= doc_freq[0] and doc_count[1] <= doc_freq[1]:
+        found = doc_id[0] == doc_id[1]
+        if doc_id[0] < doc_id[1]:
+            if skip_width[0] > 0:
+                while doc_count[0] + skip_width[0] < doc_freq[0]:
+                    d_id, _, _ = read_posting(word, doc_count[0] + skip_width[0])
+                    if d_id > doc_id[1]:
+                        break
+                    doc_count[0] += skip_width[0]
+            doc_reader.seek(base_pointer + doc_byte_width * (doc_count[0] - 1))
+            for _ in range(skip_width[0] + 1):
+                d_id = read_doc_id(doc_reader)
+                tf = read_tf(doc_reader)
+                pp = read_position_pointer(doc_reader)
+                doc_count[0] += 1
+                if d_id >= doc_id[1]:
+                    found = d_id == doc_id[1]
+                    doc_id[0] = d_id
+                    term_freq[0] = tf
+                    pos_pointer = pp
+                    break
+                if doc_count[0] >= doc_freq[0]:
+                    break
+        elif doc_id[0] > doc_id[1]:
+            if skip_width[1] > 0:
+                while doc_count[1] + skip_width[1] < doc_freq[1]:
+                    d_id = docs[doc_count[1] + skip_width[1]]
+                    if d_id > doc_id[0]:
+                        break
+                    doc_count[1] += skip_width[1]
+            for _ in range(skip_width[1] + 1):
+                d_id = docs[doc_count[1]]
+                tf = len(pos_lst[doc_count[1]])
+                doc_count[1] += 1
+                if d_id >= doc_id[0]:
+                    found = d_id == doc_id[0]
+                    doc_id[1] = d_id
+                    term_freq[1] = tf
+                    break
+                if doc_count[1] >= doc_freq[1]:
+                    break
+        if found:
+            pos_reader = open(postings_file, 'rb')
+            pos_reader.seek(pos_pointer)
+            position_list = pos_lst[doc_count[1] - 1]
+            position_list.append(-1)
+            position = [read_positional_index(pos_reader), position_list[0]]
+            skip_pos_width = [math.floor(math.sqrt(term_freq[0])), math.floor(math.sqrt(term_freq[1]))]
+            pos_count = [1, 1]
+            found2 = (position[1] - position[0] == pos[1] - pos[0])
+            this_pos = []
+            if found2:
+                this_pos.append(position[0])
+            while pos_count[0] <= term_freq[0] and pos_count[1] <= term_freq[1] and (details or not found2):
+                if position[1] - position[0] > pos[1] - pos[0]:
+                    if skip_pos_width[0] > 0:
+                        while pos_count[0] + skip_pos_width[0] < term_freq[0]:
+                            p_id = read_position(word, doc_count[0], pos_count[0] + skip_pos_width[0])
+                            if position[1] - p_id < pos[1] - pos[0]:
+                                break
+                            pos_count[0] += skip_pos_width[0]
+                    pos_reader.seek(pos_pointer + pos_byte_width * (pos_count[0] - 1))
+                    for _ in range(skip_pos_width[0] + 1):
+                        p_id = read_positional_index(pos_reader)
+                        pos_count[0] += 1
+                        if position[1] - p_id <= pos[1] - pos[0]:
+                            matches = position[1] - p_id == pos[1] - pos[0]
+                            found2 = matches or found2
+                            position[0] = p_id
+                            if matches:
+                                this_pos.append(position[0])
+                            break
+                        if pos_count[0] >= term_freq[0]:
+                            break
+                elif position[1] - position[0] < pos[1] - pos[0]:
+                    if skip_pos_width[1] > 0:
+                        while pos_count[1] + skip_pos_width[1] < term_freq[1]:
+                            p_id = position_list[pos_count[1] + skip_pos_width[1]]
+                            if position[0] - p_id < pos[0] - pos[1]:
+                                break
+                            pos_count[1] += skip_pos_width[1]
+                    for _ in range(skip_pos_width[1] + 1):
+                        p_id = position_list[pos_count[1]]
+                        pos_count[1] += 1
+                        if position[0] - p_id <= pos[0] - pos[1]:
+                            matches = position[0] - p_id == pos[0] - pos[1]
+                            found2 = matches or found2
+                            position[1] = p_id
+                            if matches:
+                                this_pos.append(position[0])
+                            break
+                        if pos_count[1] >= term_freq[1]:
+                            break
+            print(found2, doc_id[0])
+            if found2:
+                res.append(doc_id[0])
+                res_pos.append(this_pos)
+            pos_reader.close()
+            doc_id[0] = read_doc_id(doc_reader)
+            term_freq[0] = read_tf(doc_reader)
+            pos_pointer = read_position_pointer(doc_reader)
+            doc_count[0] += 1
+            doc_id[1] = docs[doc_count[1]]
+            term_freq[1] = len(pos_lst[doc_count[1]])
+            doc_count[1] += 1
+    doc_reader.close()
+    print(res)
+    print(res_pos)
+    return res, res_pos
+
+
 def process_phrasal_search(text):
     """
     Implement phrasal search given the phrase
@@ -439,9 +577,14 @@ def process_phrasal_search(text):
             if tf[word] > 1:
                 has_duplicates = word
         if not has_duplicates:
-            return intersect_words(words[0], words[1], [pos[words[0]][0], pos[words[1]][0]], True)
+            return intersect_words(words[0], words[1], [pos[words[0]][0], pos[words[1]][0]], False)[0]
         else:
             list_of_duplicated, duplicated_positions = get_list_for_word(has_duplicates, pos[has_duplicates], True)
+            word = words[0]
+            if has_duplicates == word:
+                word = words[1]
+            return intersect_word_list(word, list_of_duplicated, duplicated_positions,
+                                       [pos[word][0], pos[has_duplicates][0]], False)[0]
             # intersect (the other word, lod)
     return res
 
