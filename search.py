@@ -7,7 +7,7 @@ from nltk.corpus import wordnet as wn
 
 # Global variables
 from file_io import load_dict, read_doc_id, read_float_bin_file, read_tf, read_position_pointer, read_positional_index
-from widths import doc_width, smallest_doc_id, doc_byte_width, pos_byte_width, number_of_doc_used_in_relevance_feedback
+from widths import doc_byte_width, pos_byte_width, number_of_doc_used_in_relevance_feedback
 from normalize import process_doc
 
 pf = None
