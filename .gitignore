@@ -3,3 +3,11 @@
 /postings.txt
 /output.txt
 /__pycache__
+/.gitignore
+/.idea/
+/dictionary*
+/lengths*
+/positions*
+/postings*
+/test.py
+/query.txt

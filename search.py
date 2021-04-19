@@ -213,15 +213,16 @@ def get_query_dict(query):
     return query_dict
 
 
-def process_free_query(query_dict):
+def calculate_scores(query_dict, src_lst):
     """
-    Process a free query
-    :param query_dict: a dictionary with query term as key and term frequency as value
-    :return: a dictionary with scores of the documents
+    Calculates the scores in a list of documents corresponding to a query
+    :param query_dict: the query term frequencies mapping
+    :param src_lst: the list of documents to consider
+    :return: a mapping of docID to scores in the given list
     """
     # Initialize scores of each document to 0
     scores = {}
-    for doc in doc_len:
+    for doc in src_lst:
         scores[doc] = 0
     for term in query_dict:
         if term not in dictionary:
@@ -245,6 +246,15 @@ def process_free_query(query_dict):
         if doc_len[doc] != 0:
             scores[doc] /= doc_len[doc]
         return scores
+
+
+def process_free_query(query_dict):
+    """
+    Process a free query
+    :param query_dict: a dictionary with query term as key and term frequency as value
+    :return: a dictionary with scores of the documents
+    """
+    return calculate_scores(query_dict, doc_len)
 
 
 def read_position(word, doc_index, index):
@@ -597,9 +607,9 @@ def process_phrasal_search(text):
     :param text: the phrase before tokenization and normalization to search, the number of words is 1, 2, or 3
     :return: the list of documents ranked by relevance
     """
-    lst = get_phrasal_search_list(text)
-    query_dict, _, _ = process_doc(text)
-    scores = process_free_query(query_dict)
+    tf, pos, _ = process_doc(text)
+    lst = get_phrasal_search_list(tf, pos)
+    return calculate_scores(tf, lst)
     """
     score_heap = []
     for d in lst:
@@ -607,20 +617,16 @@ def process_phrasal_search(text):
     res = list(map(lambda x: x[1], scores))
     print(res)
     """
-    res = {}
-    for d in lst:
-        res[d] = scores[d]
-    return res
 
 
-def get_phrasal_search_list(text):
+def get_phrasal_search_list(tf, pos):
     """
     Implement phrasal search given the phrase, unordered
-    :param text: the phrase before tokenization and normalization to search, the number of words is 1, 2, or 3
+    :param tf: the term frequencies of the query
+    :param pos: the positional indices of the query
     :return: the list of relevant documents
     """
     # Initialize information needed
-    tf, pos, _ = process_doc(text)
     res = []
     words = list(iter(tf))
     count = len(words)
