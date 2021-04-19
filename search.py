@@ -556,13 +556,18 @@ def process_phrasal_search(text):
     :return: the list of documents ranked by relevance
     """
     lst = get_phrasal_search_list(text)
-    score_heap = []
     query_dict, _, _ = process_doc(text)
     scores = process_free_query(query_dict)
+    """
+    score_heap = []
     for d in lst:
         heappush(score_heap, (scores[d], d))
     res = list(map(lambda x: x[1], scores))
     print(res)
+    """
+    res = {}
+    for d in lst:
+        res[d] = scores[d]
     return res
 
 
