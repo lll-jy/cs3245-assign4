@@ -3,6 +3,7 @@ import getopt
 import queue
 import sys
 import math
+import nltk
 from heapq import *
 from nltk.corpus import wordnet as wn
 from nltk.stem.porter import *
@@ -211,7 +212,6 @@ def get_query_dict(query):
     :param query: original query
     :return: a dictionary with query term as key and term frequency as value
     """
-    res = []
     query_info = process_doc(query)
     query_dict = query_info[0]
     return query_dict
