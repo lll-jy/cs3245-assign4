@@ -151,9 +151,9 @@ def process_query(query):
         query = query.strip("\"")
         return process_phrasal_search(query)
     else:
-        query_dict = get_query_dict(query)
         # Query extension is used for free text query
-        res = process_free_query(query_extension(query_dict))
+        new_query = query_extension(query)
+        res = process_free_query(get_query_dict(new_query))
         return res
 
 
@@ -178,31 +178,22 @@ def weight_doc(term_freq):
     return 1 + math.log(term_freq, 10)
 
 
-def query_extension(query_dict):
+def query_extension(query):
     """
     Using nltk's WordNet to include words with similar meanings in query
-    :param query_dict: a dictionary with query term as key and term
-    frequency as value
-    :return: another dictionary with query term(including extended terms)
-    as key and the default term frequency as value(original terms' tf are
-    doubled to increase their weight in searching)
+    :param query: the original query
+    :return: a new query with the original terms occurring twice(to increase
+    the weight of the original terms) and extension terms from nltk word net
+    occurring once
     """
-    stemmer = PorterStemmer()
-    alnum_regex = re.compile('[^a-zA-Z0-9]')
-    extension_words = {}
-    for term in query_dict:
+    words = nltk.word_tokenize(query)
+    new_query = (query + " ") * 2
+    for term in words:
         for synset in wn.synsets(term):
             for word in synset.lemma_names():
-                word = alnum_regex.sub('', stemmer.stem(word.lower()))
-                if word not in query_dict:
-                    extension_words[word] = 1
-
-    final_query = {}
-    for term in query_dict:
-        final_query[term] = 2 * (query_dict[term] + 1)
-    for term in extension_words:
-        final_query[term] = extension_words[term]
-    return final_query
+                if word not in words:
+                    new_query += " " + word
+    return new_query
 
 
 def get_query_dict(query):
