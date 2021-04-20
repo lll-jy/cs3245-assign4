@@ -392,7 +392,7 @@ def intersect_words(w1, w2, pos, details):
             if doc_id[0] > doc_id[1]:
                 smaller_index = 1
             other_index = 1 - smaller_index
-            if skip_width[smaller_index] > 0:
+            if skip_width[smaller_index] > 1:
                 while doc_count[smaller_index] + skip_width[smaller_index] < doc_freq[smaller_index]:
                     d_id, _, _ = read_posting(w[smaller_index], doc_count[smaller_index] + skip_width[smaller_index])
                     if d_id > doc_id[other_index]:
@@ -430,10 +430,11 @@ def intersect_words(w1, w2, pos, details):
                 if position[1] - position[0] < diff[0]:
                     smaller_index = 1
                 other_index = 1 - smaller_index
-                if skip_pos_width[smaller_index] > 10:
+                if skip_pos_width[smaller_index] > 1:
                     while pos_count[smaller_index] + skip_pos_width[smaller_index] < term_freq[smaller_index]:
                         pf.seek(pos_pointer[smaller_index] +
                                 (pos_count[smaller_index] + skip_pos_width[smaller_index]) * pos_byte_width)
+                        p_id = read_positional_index(pf)
                         if position[other_index] - p_id < diff[smaller_index]:
                             break
                         pos_count[smaller_index] += skip_pos_width[smaller_index]
@@ -496,7 +497,7 @@ def intersect_word_list(word, docs, pos_lst, pos, details):
     while doc_count[0] <= doc_freq[0] and doc_count[1] <= doc_freq[1]:
         found = doc_id[0] == doc_id[1]
         if doc_id[0] < doc_id[1]:
-            if skip_width[0] > 0:
+            if skip_width[0] > 1:
                 while doc_count[0] + skip_width[0] < doc_freq[0]:
                     d_id, _, _ = read_posting(word, doc_count[0] + skip_width[0])
                     if d_id > doc_id[1]:
@@ -517,7 +518,7 @@ def intersect_word_list(word, docs, pos_lst, pos, details):
                 if doc_count[0] >= doc_freq[0]:
                     break
         elif doc_id[0] > doc_id[1]:
-            if skip_width[1] > 0:
+            if skip_width[1] > 1:
                 while doc_count[1] + skip_width[1] < doc_freq[1]:
                     d_id = docs[doc_count[1] + skip_width[1]]
                     if d_id > doc_id[0]:
@@ -548,7 +549,7 @@ def intersect_word_list(word, docs, pos_lst, pos, details):
                 this_pos.append(position[0])
             while pos_count[0] <= term_freq[0] and pos_count[1] <= term_freq[1] and (details or not found2):
                 if position[1] - position[0] > pos[1] - pos[0]:
-                    if skip_pos_width[0] > 0:
+                    if skip_pos_width[0] > 1:
                         while pos_count[0] + skip_pos_width[0] < term_freq[0]:
                             p_id = read_position(word, doc_count[0], pos_count[0] + skip_pos_width[0])
                             if position[1] - p_id < pos[1] - pos[0]:
@@ -568,7 +569,7 @@ def intersect_word_list(word, docs, pos_lst, pos, details):
                         if pos_count[0] >= term_freq[0]:
                             break
                 elif position[1] - position[0] < pos[1] - pos[0]:
-                    if skip_pos_width[1] > 0:
+                    if skip_pos_width[1] > 1:
                         while pos_count[1] + skip_pos_width[1] < term_freq[1]:
                             p_id = position_list[pos_count[1] + skip_pos_width[1]]
                             if position[0] - p_id < pos[0] - pos[1]:
