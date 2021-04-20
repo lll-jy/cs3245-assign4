@@ -66,7 +66,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
 
     final_score = compute_harmonic_scores(result_lists)
 
-    result = select_first_k(final_score, 10)
+    result = select_first_k(final_score, 1000)
 
     if not result:
         rf.write('\n')
@@ -97,7 +97,7 @@ def compute_harmonic_scores(result_lists):
         num_of_lists = len(result_lists)
         for document in result_lists[0]:
             acc = 0
-            for number in range(1, num_of_lists):
+            for number in range(0, num_of_lists):
                 if document not in result_lists[number] or result_lists[number][document] == 0:
                     final_score[document] = 0
                     break
