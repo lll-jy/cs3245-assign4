@@ -2,7 +2,7 @@
 /dictionary.txt
 /postings.txt
 /output.txt
-/__pycache__
+/__pycache__/
 /.gitignore
 /.idea/
 /dictionary*

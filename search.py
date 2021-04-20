@@ -430,10 +430,10 @@ def intersect_words(w1, w2, pos, details):
                 if position[1] - position[0] < diff[0]:
                     smaller_index = 1
                 other_index = 1 - smaller_index
-                if skip_pos_width[smaller_index] > 0:
+                if skip_pos_width[smaller_index] > 10:
                     while pos_count[smaller_index] + skip_pos_width[smaller_index] < term_freq[smaller_index]:
-                        p_id = read_position(w[smaller_index], doc_count[smaller_index],
-                                             pos_count[smaller_index] + skip_pos_width[smaller_index])
+                        pf.seek(pos_pointer[smaller_index] +
+                                (pos_count[smaller_index] + skip_pos_width[smaller_index]) * pos_byte_width)
                         if position[other_index] - p_id < diff[smaller_index]:
                             break
                         pos_count[smaller_index] += skip_pos_width[smaller_index]
@@ -610,13 +610,6 @@ def process_phrasal_search(text):
     tf, pos, _ = process_doc(text)
     lst = get_phrasal_search_list(tf, pos)
     return calculate_scores(tf, lst)
-    """
-    score_heap = []
-    for d in lst:
-        heappush(score_heap, (scores[d], d))
-    res = list(map(lambda x: x[1], scores))
-    print(res)
-    """
 
 
 def get_phrasal_search_list(tf, pos):

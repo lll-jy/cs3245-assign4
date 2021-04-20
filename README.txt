@@ -124,7 +124,8 @@ Positional indexing is used for phrasal search, and only exact matches (after no
 positions will be returned, and the resulting list is ranked by cosing similarity. Phrasal search is restricted
 to 1-3 word/term phrases.
 
-Skip lists with sqrt(N) skip width is applied to both document IDs and positional IDs.
+Skip lists with sqrt(N) skip width is applied to both document IDs and positional IDs (if the skip width is large
+enough).
 
 
 == Files included with this submission ==
