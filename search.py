@@ -5,6 +5,7 @@ import sys
 import math
 from heapq import *
 from nltk.corpus import wordnet as wn
+from nltk.stem.porter import *
 
 # Global variables
 from file_io import load_dict, read_doc_id, read_float_bin_file, read_tf, read_position_pointer, read_positional_index
@@ -185,10 +186,13 @@ def query_extension(query_dict):
     as key and the default term frequency as value(original terms' tf are
     doubled to increase their weight in searching)
     """
+    stemmer = PorterStemmer()
+    alnum_regex = re.compile('[^a-zA-Z0-9]')
     extension_words = {}
     for term in query_dict:
         for synset in wn.synsets(term):
             for word in synset.lemma_names():
+                word = alnum_regex.sub('', stemmer.stem(word.lower()))
                 if word not in query_dict:
                     extension_words[word] = 1
 
