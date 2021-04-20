@@ -187,24 +187,13 @@ def query_extension(query):
     occurring once
     """
     words = nltk.word_tokenize(query)
-    extension_words = []
     new_query = (query + " ") * 2
     for term in words:
         for synset in wn.synsets(term):
             for word in synset.lemma_names():
                 if word not in words:
-                    extension_words.append(word)
                     new_query += " " + word
     return new_query
-
-    '''
-    final_query = {}
-    for term in query_dict:
-        final_query[term] = 2 * (query_dict[term] + 1)
-    for term in extension_words:
-        final_query[term] = extension_words[term]
-    return final_query
-    '''
 
 
 def get_query_dict(query):
