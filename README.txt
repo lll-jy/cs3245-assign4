@@ -88,7 +88,7 @@ meaning to this term is retrieved from the WordNet to form the new query. The ne
 both the original terms and the extended term, while the original terms having a higher weight.
 For now, the weight of original and extended terms are differentiated by adjusting the term
 frequency. The extended terms' term frequency is set to be 1, and to make the difference more
-obvious, the tf of original terms are set to be (1 + the actual tf) * 2.
+obvious, the tf of original terms are set to be (the actual tf) * 2.
 
 
 3. Searching and ranking
