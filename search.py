@@ -72,11 +72,12 @@ def run_search(dict_file, postings_file, queries_file, results_file):
 
     if not result:
         rf.write('\n')
-    rf.write(str(result[0] + smallest_doc_id))
-    for doc_id in result[1:]:
-        rf.write(' ')
-        rf.write(str(doc_id + smallest_doc_id))
-    rf.write('\n')
+    else:
+        rf.write(str(result[0] + smallest_doc_id))
+        for doc_id in result[1:]:
+            rf.write(' ')
+            rf.write(str(doc_id + smallest_doc_id))
+        rf.write('\n')
 
     # Close files
     pf.close()
@@ -121,6 +122,8 @@ def select_first_k(scores, k):
     :return: a list of k document ids
     """
     res = []
+    if scores is None:
+        return []
     for doc in scores:
         # Square the scores to make the difference in weight more obvious
         scores[doc] *= scores[doc]
